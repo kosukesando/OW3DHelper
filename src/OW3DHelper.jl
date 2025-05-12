@@ -8,7 +8,7 @@ export
     OW3DInput,
     calc_etaphi,
     JSpec,
-    calc_eta_origin
+    calc_eta_origin,
 
 const g::Float64 = 9.81
 
@@ -221,7 +221,7 @@ function calc_eta(oi, kxmatg, kymatg, ωmatg, t, ampg_newwave_norm)
     return η
 end
 
-function _calc_eta_origin(oi, kxmatg, kymatg, wtmatg_arr, ampg_newwave_norm)
+function _calc_eta_single(oi, kxmatg, kymatg, wtmatg_arr, ampg_newwave_norm, x::Float64, y::Float64)
     (nkx, nky) = size(ampg_newwave_norm)
     # Generate full-domain
     # Calculate linear free surface
@@ -233,8 +233,6 @@ function _calc_eta_origin(oi, kxmatg, kymatg, wtmatg_arr, ampg_newwave_norm)
             ky = kymatg[ki, kj]
             wt = wtmatg[ki, kj]
             an = ampg_newwave_norm[ki, kj]
-            x = 0
-            y = 0
             phasei = kx * x + ky * y - wt + oi.ϕ
             etacomp = an * cos(phasei)
             η[i] += etacomp
@@ -242,6 +240,7 @@ function _calc_eta_origin(oi, kxmatg, kymatg, wtmatg_arr, ampg_newwave_norm)
     end
     η
 end
+
 function calc_phi(oi, kmatg, kxmatg, kymatg, ωmatg, t, ampg_newwave_norm, η)
     (nkx, nky) = size(ampg_newwave_norm)
     # Generate full-domain
@@ -272,6 +271,10 @@ function calc_phi(oi, kmatg, kxmatg, kymatg, ωmatg, t, ampg_newwave_norm, η)
 end
 
 function calc_eta_origin(oi::OW3DInput, ts::Int, te::Int)
+    calc_eta_single(oi, ts, te, 0.0, 0.0)
+end
+
+function calc_eta_single(oi::OW3DInput, ts::Int, te::Int, x, y)
     kminx = 2 * pi / (oi.dx * oi.nx)
     kminy = 2 * pi / (oi.dy * oi.ny)
 
@@ -401,9 +404,8 @@ function calc_eta_origin(oi::OW3DInput, ts::Int, te::Int)
     # Generate full-domain
 
     t = ts:te
-    # wtmatg = wmatg * t
-    wtmatg_arr = [wmatg * _t for _t in t]
-    η = _calc_eta_origin(oi, kxmatg, kymatg, wtmatg_arr, ampg_newwave_norm)
+    wtmatg_arr = [ωmatg * _t for _t in t]
+    η = _calc_eta_single(oi, kxmatg, kymatg, wtmatg_arr, ampg_newwave_norm, x, y)
     # ϕ = calc_phi(oi, kmatg, kxmatg, kymatg, wtmatg, ampg_newwave_norm, η)
     η
 end
