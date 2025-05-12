@@ -107,7 +107,7 @@ function calc_etaphi(oi::OW3DInput, t::Number)
         h3 = oi.spec.γ .^ (exp.(-0.5 * ((((fmatg / fm) .- 1) ./ (sj)) .^ 2))) #peak enhancement
         Spec = D * h1 .* h2 .* h3
         # Ignore "alpha" coefficient since this is a scaling parameter
-        # Distribution valid for S(w) & S(f) since scaled with normalisation
+        # Distribution valid for S(ω) & S(f) since scaled with normalisation
 
         if oi.spreading_type == "W"
             Sdir = exp.(-0.5 * (dirg .^ 2) ./ (oi.spreading_param^2)) # A wrapped normal spreading function with parameter sigma
@@ -186,14 +186,14 @@ function calc_etaphi(oi::OW3DInput, t::Number)
 
     # η = zeros(oi.nx, oi.ny)
     # ϕ = zeros(oi.nx, oi.ny)
-    η = calc_eta(oi, kxmatg, kymatg, wtmatg, ampg_newwave_norm)
+    η = calc_eta(oi, kxmatg, kymatg, ωmatg, t, ampg_newwave_norm)
     # calc_eta!(η, oi, kxmatg, kymatg, wtmatg, ampg_newwave_norm)
-    ϕ = calc_phi(oi, kmatg, kxmatg, kymatg, wtmatg, ampg_newwave_norm, η)
+    ϕ = calc_phi(oi, kmatg, kxmatg, kymatg, ωmatg, t, ampg_newwave_norm, η)
     # ϕ = zeros(oi.nx, oi.ny)
     η, ϕ
 end
 
-function calc_eta(oi, kxmatg, kymatg, wtmatg, ampg_newwave_norm)
+function calc_eta(oi, kxmatg, kymatg, ωmatg, t, ampg_newwave_norm)
     (nkx, nky) = size(ampg_newwave_norm)
     η = zeros(oi.nx, oi.ny)
     # Generate full-domain
@@ -205,12 +205,12 @@ function calc_eta(oi, kxmatg, kymatg, wtmatg, ampg_newwave_norm)
         for ki = eachindex(1:nkx)
             kx = kxmatg[ki, kj]
             ky = kymatg[ki, kj]
-            wt = wtmatg[ki, kj]
+            ω = ωmatg[ki, kj]
             an = ampg_newwave_norm[ki, kj]
             for yi = eachindex(yvec), xi = eachindex(xvec)
                 x = xvec[xi]
                 y = yvec[yi]
-                phasei = kx * x + ky * y - wt + oi.ϕ
+                phasei = kx * x + ky * y - ω * t + oi.ϕ
                 etacomp = an * cos(phasei)
                 # if !isnan(etacomp)
                 η[xi, yi] += etacomp
@@ -288,7 +288,7 @@ function calc_eta_origin(oi::OW3DInput, ts::Int, te::Int)
     nkx = length(kx)
     nky = length(ky)
     kmatg = zeros(nkx, nky)
-    wmatg = zeros(nkx, nky)
+    ωmatg = zeros(nkx, nky)
     fmatg = zeros(nkx, nky)
     ampg = zeros(nkx, nky)
     dirg = zeros(nkx, nky)
@@ -305,11 +305,11 @@ function calc_eta_origin(oi::OW3DInput, ts::Int, te::Int)
             for j = 1:nky
                 kAbs = sqrt((kx[i])^2 + (ky[j])^2) #wavenumber of component
                 theta = atan(ky[j], kx[i]) * 180 / pi #direction of component
-                w = sqrt(kAbs * g .* tanh(kAbs * oi.depth)) #natural frequency of component
-                f = (1 / (2 * pi)) * w #natural frequencies in Hertz
+                ω = sqrt(kAbs * g .* tanh(kAbs * oi.depth)) #natural frequency of component
+                f = (1 / (2 * pi)) * ω #natural frequencies in Hertz
                 kmatg[i, j] = kAbs
                 dirg[i, j] = theta
-                wmatg[i, j] = w
+                ωmatg[i, j] = ω
                 fmatg[i, j] = f
             end
         end
