@@ -90,11 +90,11 @@ function calc_dirg(oi::OW3DInput)
             for j = 1:nky
                 kAbs = sqrt((kx[i])^2 + (ky[j])^2) #wavenumber of component
                 theta = atan(ky[j], kx[i]) * 180 / pi #direction of component
-                w = sqrt(kAbs * g .* tanh(kAbs * oi.depth)) #natural frequency of component
-                f = (1 / (2 * pi)) * w #natural frequencies in Hertz
+                ω = sqrt(kAbs * g .* tanh(kAbs * oi.depth)) #natural frequency of component
+                f = (1 / (2 * pi)) * ω #natural frequencies in Hertz
                 kmatg[i, j] = kAbs
                 dirg[i, j] = theta
-                wmatg[i, j] = w
+                ωmatg[i, j] = ω
                 fmatg[i, j] = f
             end
         end
@@ -111,7 +111,7 @@ function calc_dirg(oi::OW3DInput)
         h3 = oi.spec.γ .^ (exp.(-0.5 * ((((fmatg / fm) .- 1) ./ (sj)) .^ 2))) #peak enhancement
         Spec = D * h1 .* h2 .* h3
         # Ignore "alpha" coefficient since this is a scaling parameter
-        # Distribution valid for S(w) & S(f) since scaled with normalisation
+        # Distribution valid for S(ω) & S(f) since scaled with normalisation
 
         if oi.spreading_type == "W"
             Sdir = exp.(-0.5 * (dirg .^ 2) ./ (oi.spreading_param^2)) # A wrapped normal spreading function with parameter sigma
@@ -199,7 +199,7 @@ function calc_etaphi(oi::OW3DInput, t::Number)
     nkx = length(kx)
     nky = length(ky)
     kmatg = zeros(nkx, nky)
-    wmatg = zeros(nkx, nky)
+    ωmatg = zeros(nkx, nky)
     fmatg = zeros(nkx, nky)
     ampg = zeros(nkx, nky)
     dirg = zeros(nkx, nky)
@@ -216,11 +216,11 @@ function calc_etaphi(oi::OW3DInput, t::Number)
             for j = 1:nky
                 kAbs = sqrt((kx[i])^2 + (ky[j])^2) #wavenumber of component
                 theta = atan(ky[j], kx[i]) * 180 / pi #direction of component
-                w = sqrt(kAbs * g .* tanh(kAbs * oi.depth)) #natural frequency of component
-                f = (1 / (2 * pi)) * w #natural frequencies in Hertz
+                ω = sqrt(kAbs * g .* tanh(kAbs * oi.depth)) #natural frequency of component
+                f = (1 / (2 * pi)) * ω #natural frequencies in Hertz
                 kmatg[i, j] = kAbs
                 dirg[i, j] = theta
-                wmatg[i, j] = w
+                ωmatg[i, j] = ω
                 fmatg[i, j] = f
             end
         end
@@ -372,8 +372,7 @@ function _calc_eta_origin(oi, kxmatg, kymatg, wtmatg_arr, ampg_newwave_norm)
     end
     η
 end
-
-function calc_phi(oi, kmatg, kxmatg, kymatg, wtmatg, ampg_newwave_norm, η)
+function calc_phi(oi, kmatg, kxmatg, kymatg, ωmatg, t, ampg_newwave_norm, η)
     (nkx, nky) = size(ampg_newwave_norm)
     # Generate full-domain
     xvec = oi.dx * (-(oi.nx - 1)/2:1:(oi.nx-1)/2)
@@ -386,14 +385,14 @@ function calc_phi(oi, kmatg, kxmatg, kymatg, wtmatg, ampg_newwave_norm, η)
             k = kmatg[ki, kj]
             kx = kxmatg[ki, kj]
             ky = kymatg[ki, kj]
-            wt = wtmatg[ki, kj]
+            ω = ωmatg[ki, kj]
             an = ampg_newwave_norm[ki, kj]
             for xi in eachindex(xvec)
                 for yi in eachindex(yvec)
                     x = xvec[xi]
                     y = yvec[yi]
-                    phasei = kx * x + ky * y - wt + oi.ϕ
-                    phicomp = (an / (wt + 0.000000001)) * g * ((cosh(k * (η[xi, yi] + oi.depth)) / cosh(k * oi.depth)) * sin(phasei))
+                    phasei = kx * x + ky * y - ω * t + oi.ϕ
+                    phicomp = (an / (ω + 0.000000001)) * g * ((cosh(k * (η[xi, yi] + oi.depth)) / cosh(k * oi.depth)) * sin(phasei))
                     @views(ϕ[xi, yi] += phicomp)
                 end
             end
