@@ -4,12 +4,16 @@ authors = ["Kosuke Sando <kosukesando@gmail.com> and contributors"]
 version = "1.0.0-DEV"
 
 [deps]
+Dates = "ade2ca70-3891-5945-98fb-dc099432e06a"
 LoopVectorization = "bdcacae8-1622-11e9-2a5c-532679323890"
+Printf = "de0858da-6303-5e67-8744-51eddeeeb8d7"
 ProgressLogging = "33c8b6b6-d38a-422a-b730-caa89a2f386c"
 TerminalLoggers = "5d786b92-1e48-4d6f-9151-6b4477ca9bed"
 
 [compat]
+Dates = "1.11.0"
 LoopVectorization = "0.12.171"
+Printf = "1.11.0"
 ProgressLogging = "0.1.4"
 TerminalLoggers = "0.1.7"
 julia = "1.6.7"

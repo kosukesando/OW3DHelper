@@ -3,12 +3,16 @@ module OW3DHelper
 using ProgressLogging
 using TerminalLoggers
 using LoopVectorization
+using Printf
+using Dates
 
 export
     OW3DInput,
     calc_etaphi,
     JSpec,
     calc_eta_origin,
+    export_ow3d_init,
+    open_EP
 
 const g::Float64 = 9.81
 
@@ -317,4 +321,40 @@ function calc_etaphi(oi::OW3DInput, ts::Int, te::Int, x, y)
     ϕ = zeros(length(t))
     η, ϕ
 end
+
+function export_ow3d_init(η, ϕ, stime, oi::OW3DInput, dir)
+    println("generating output file...")
+    file_name = "OceanWave3D_$(oi.nx)x$(oi.ny)_$(round(Int,100*oi.A))cm_rot$(round(Int,oi.twist_angle))_phase$(round(Int,oi.ϕ))_depth$(round(Int,oi.depth))_mwd$(round(Int,oi.mwd)).init"
+    Lx = (oi.nx - 1) * oi.dx
+    Ly = (oi.ny - 1) * oi.dy
+    fpath = joinpath(dir, file_name)
+    open(fpath, "w") do file
+        write(file, @sprintf "Tropical Cyclone focus wave H=%f nx=%d ny=%d dx=%f dy=%f depth=%f phase=%f Twist=%f MWD=%f" oi.A oi.nx oi.ny oi.dx oi.dy oi.depth oi.ϕ oi.twist_angle oi.mwd)
+        write(file, @sprintf "\n%12e %12e %d %d %12e" Lx Ly oi.nx oi.ny stime)
+        for ry = 1:oi.ny
+            for rx = 1:oi.nx
+                write(file, @sprintf "\n%12e %12e" η[rx, ry] ϕ[rx, ry])
+            end
+        end
+    end
+end
+
+function open_EP(dir)
+    io_ep = open(dir)
+    seek(io_ep, sizeof(Int32))
+    Nx = read(io_ep, Int32)
+    Ny = read(io_ep, Int32)
+    seek(io_ep, sizeof(Int32) * 5)
+    X = Array{Float64}(undef, Nx * Ny)
+    Y = Array{Float64}(undef, Nx * Ny)
+    read!(io_ep, X)
+    read!(io_ep, Y)
+    E = Array{Float64}(undef, Nx * Ny)
+    P = Array{Float64}(undef, Nx * Ny)
+    read!(io_ep, E)
+    read!(io_ep, P)
+    close(io_ep)
+    Nx, Ny, X, Y, E, P
+end
+
 end
