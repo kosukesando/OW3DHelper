@@ -112,40 +112,6 @@ function calc_etaphi(oi::OW3DInput, t::Number)
         if oi.spreading_type == "W"
             Sdir = exp.(-0.5 * (dirg .^ 2) ./ (oi.spreading_param^2)) # A wrapped normal spreading function with parameter sigma
         end
-        if oi.spreading_type == "T"
-            Sdir = exp(-0.5 * (dirg .^ 2) ./ (oi.spreading_param^2))
-        end
-        if oi.spreading_type == "E"
-
-            s = zeros(1, len)
-            tm1 = zeros(1, len)
-            tm2 = zeros(1, len)
-            BM = zeros(1, len)
-
-            IL = fmatg .< fm
-            IG = fmatg .>= fm
-
-            s[IL] .= 0.0 .+ 1.0 * ((fmatg[IL] ./ fm) .^ (-7.929))
-            s[IG] .= 0.0 .- 1.0 * ((fmatg[IG] ./ fm) .^ (-2))
-
-            tm1[IL] .+= 14.93 / 2
-            tm2[IL] .-= 14.93 / 2
-
-            tm1[IG] .+= (1 / 2) * (exp.(5.453 .- 2.750 .* ((fmatg[IG] ./ fm) .^ (-1))))
-            tm2[IG] .-= (1 / 2) * (exp.(5.453 .- 2.750 .* ((fmatg[IG] ./ fm) .^ (-1))))
-
-            E = (1 / (sqrt(8 * pi))) * (1 ./ s)
-
-            for kk = -10:1:10
-                BM1 = exp.((-0.5) * ((((pi / 180) * dirg .- (pi / 180) * tm1 .- 2 * pi * kk) ./ ((pi / 180) * s)) .^ 2))
-                BM2 = exp.((-0.5) * ((((pi / 180) * dirg .- (pi / 180) * tm2 .- 2 * pi * kk) ./ ((pi / 180) * s)) .^ 2))
-                BM .+= BM1 + BM2
-            end
-
-            Sdir = E .* BM # Ewans bi-modal spreading function
-
-        end
-
         ampg_newwave = 1 ./ kmatg .* Spec .* Sdir #amplitude of component - S(kx,ky)
         replace!(ampg_newwave, NaN => 0)
     else
@@ -154,42 +120,30 @@ function calc_etaphi(oi::OW3DInput, t::Number)
 
     dirg = dirg + mcallister_mwd.(fmatg / fm, oi.twist_angle) # MWD as a function of freq
     dirg = dirg .+ oi.mwd
+
+    kstarth = sqrt(oi.kmaxx * oi.kmaxy) - 1.00 * oi.k0
+    kmin = sqrt(kminx * kminy)
+    kmax = sqrt(oi.kmaxx * oi.kmaxy)
+    kstartl = 0.5 * oi.k0
+    Ism = abs.(kmatg) .>= kstarth .&& abs.(kmatg) .<= kmax
+    Isml = abs.(kmatg) .>= kmin .&& abs.(kmatg) .<= kstartl
+    ampg_newwave[Ism] .= ampg_newwave[Ism] .* (0.5 * (cos.(((abs.(kmatg[Ism]) .- kstarth) ./ (kmax .- kstarth)) * pi) .+ 1))
+    ampg_newwave[Isml] .= ampg_newwave[Isml] .* (0.5 * (cos.(((abs.(kmatg[Isml]) .- kstartl) ./ (kmin .- kstartl)) * pi) .+ 1))
+    ampg_newwave[abs.(kmatg).>=kmax] .= 0
+    ampg_newwave[abs.(kmatg).<=kmin] .= 0
+    ampg_newwave[isnan.(ampg_newwave)] .= 0
+
     kxmatg = kmatg .* cos.(dirg * (pi / 180)) #Component of k in x direction
     kymatg = kmatg .* sin.(dirg * (pi / 180)) #Component of k in y direction
-    # wtmatg = wmatg * oi.stime       #omega * t
-    wtmatg = wmatg * t       #omega * t
-
-    ksmx = oi.kmaxx - 1.00 * oi.k0 # start smoothing kx truncation
-    ksmxl = 0.5 * oi.k0 # start smoothing kx lower-bound
-    Ismx = abs.(kxmatg) .>= ksmx .&& abs.(kxmatg) .<= oi.kmaxx
-    Ismxl = abs.(kxmatg) .>= kminx .&& abs.(kxmatg) .<= ksmxl
-    # ampg_newwave[Ismx] .= ampg_newwave[Ismx] .* (0.5 * (cos.(((abs.(kxmatg[Ismx]) .- ksmx) ./ (oi.kmaxx .- ksmx)) * (pi)) .+ 1)) .^ (1)
-    # ampg_newwave[Ismxl] .= ampg_newwave[Ismxl] .* (0.5 * (cos.(((abs.(kxmatg[Ismxl]) .- ksmxl) ./ (kminx .- ksmxl)) * (pi)) .+ 1)) .^ (1)
-    # ampg_newwave[abs.(kxmatg).>=oi.kmaxx] .= 0
-    # ampg_newwave[abs.(kxmatg).<=kminx] .= 0
-
-    ksmy = oi.kmaxy - 1.00 * oi.k0 # start smoothing ky truncation
-    ksmyl = 0.5 * oi.k0 # start smoothing ky lower-bound
-    Ismy = abs.(kymatg) .>= ksmy .&& abs.(kymatg) .<= oi.kmaxy
-    Ismyl = abs.(kymatg) .>= kminy .&& abs.(kymatg) .<= ksmyl
-    # ampg_newwave[Ismy] .= ampg_newwave[Ismy] .* (0.5 * (cos.(((abs.(kymatg[Ismy]) .- ksmy) ./ (oi.kmaxy .- ksmy)) * (pi)) .+ 1)) .^ (1)
-    # ampg_newwave[Ismyl] .= ampg_newwave[Ismyl] .* (0.5 * (cos.(((abs.(kymatg[Ismyl]) .- ksmyl) ./ (kminy .- ksmyl)) * (pi)) .+ 1)) .^ (1)
-    # ampg_newwave[abs.(kymatg).>=oi.kmaxy] .= 0
-    # ampg_newwave[abs.(kymatg).<=kminy] .= 0
 
     ampg_newwave_norm = oi.A * (ampg_newwave ./ sum(ampg_newwave)) #  normalise to control size of event
-    # return ampg_newwave_norm
     (nkx, nky) = size(ampg_newwave_norm)
     # Generate full-domain
     xvec = oi.dx * (-(oi.nx - 1)/2:1:(oi.nx-1)/2)
     yvec = oi.dy * (-(oi.ny - 1)/2:1:(oi.ny-1)/2)
 
-    # η = zeros(oi.nx, oi.ny)
-    # ϕ = zeros(oi.nx, oi.ny)
     η = calc_eta(oi, kxmatg, kymatg, ωmatg, t, ampg_newwave_norm)
-    # calc_eta!(η, oi, kxmatg, kymatg, wtmatg, ampg_newwave_norm)
     ϕ = calc_phi(oi, kmatg, kxmatg, kymatg, ωmatg, t, ampg_newwave_norm, η)
-    # ϕ = zeros(oi.nx, oi.ny)
     η, ϕ
 end
 
@@ -221,19 +175,16 @@ function calc_eta(oi, kxmatg, kymatg, ωmatg, t, ampg_newwave_norm)
     return η
 end
 
-function _calc_eta_single(oi, kxmatg, kymatg, wtmatg_arr, ampg_newwave_norm, x::Float64, y::Float64)
+function calc_eta(oi, kxmatg, kymatg, ωmatg, t_vec, ampg_newwave_norm, x::Float64, y::Float64)
     (nkx, nky) = size(ampg_newwave_norm)
-    # Generate full-domain
-    # Calculate linear free surface
-    println("Calculating linear free surface")
-    η = zeros(length(wtmatg_arr))
-    for (i, wtmatg) in enumerate(wtmatg_arr)
+    η = zeros(length(t_vec))
+    for (i, t) in enumerate(t_vec)
         for kj = eachindex(1:nky), ki = eachindex(1:nkx)
             kx = kxmatg[ki, kj]
             ky = kymatg[ki, kj]
-            wt = wtmatg[ki, kj]
+            ω = ωmatg[ki, kj]
             an = ampg_newwave_norm[ki, kj]
-            phasei = kx * x + ky * y - wt + oi.ϕ
+            phasei = kx * x + ky * y - ω * t + oi.ϕ
             etacomp = an * cos(phasei)
             η[i] += etacomp
         end
@@ -270,11 +221,11 @@ function calc_phi(oi, kmatg, kxmatg, kymatg, ωmatg, t, ampg_newwave_norm, η)
     ϕ
 end
 
-function calc_eta_origin(oi::OW3DInput, ts::Int, te::Int)
-    calc_eta_single(oi, ts, te, 0.0, 0.0)
+function calc_etaphi_origin(oi::OW3DInput, ts::Int, te::Int)
+    calc_etaphi(oi, ts, te, 0.0, 0.0)
 end
 
-function calc_eta_single(oi::OW3DInput, ts::Int, te::Int, x, y)
+function calc_etaphi(oi::OW3DInput, ts::Int, te::Int, x, y)
     kminx = 2 * pi / (oi.dx * oi.nx)
     kminy = 2 * pi / (oi.dy * oi.ny)
 
@@ -334,40 +285,6 @@ function calc_eta_single(oi::OW3DInput, ts::Int, te::Int, x, y)
         if oi.spreading_type == "W"
             Sdir = exp.(-0.5 * (dirg .^ 2) ./ (oi.spreading_param^2)) # A wrapped normal spreading function with parameter sigma
         end
-        if oi.spreading_type == "T"
-            Sdir = exp(-0.5 * (dirg .^ 2) ./ (oi.spreading_param^2))
-        end
-        if oi.spreading_type == "E"
-
-            s = zeros(1, len)
-            tm1 = zeros(1, len)
-            tm2 = zeros(1, len)
-            BM = zeros(1, len)
-
-            IL = fmatg .< fm
-            IG = fmatg .>= fm
-
-            s[IL] .= 0.0 .+ 1.0 * ((fmatg[IL] ./ fm) .^ (-7.929))
-            s[IG] .= 0.0 .- 1.0 * ((fmatg[IG] ./ fm) .^ (-2))
-
-            tm1[IL] .+= 14.93 / 2
-            tm2[IL] .-= 14.93 / 2
-
-            tm1[IG] .+= (1 / 2) * (exp.(5.453 .- 2.750 .* ((fmatg[IG] ./ fm) .^ (-1))))
-            tm2[IG] .-= (1 / 2) * (exp.(5.453 .- 2.750 .* ((fmatg[IG] ./ fm) .^ (-1))))
-
-            E = (1 / (sqrt(8 * pi))) * (1 ./ s)
-
-            for kk = -10:1:10
-                BM1 = exp.((-0.5) * ((((pi / 180) * dirg .- (pi / 180) * tm1 .- 2 * pi * kk) ./ ((pi / 180) * s)) .^ 2))
-                BM2 = exp.((-0.5) * ((((pi / 180) * dirg .- (pi / 180) * tm2 .- 2 * pi * kk) ./ ((pi / 180) * s)) .^ 2))
-                BM .+= BM1 + BM2
-            end
-
-            Sdir = E .* BM # Ewans bi-modal spreading function
-
-        end
-
         ampg_newwave = 1 ./ kmatg .* Spec .* Sdir #amplitude of component - S(kx,ky)
         replace!(ampg_newwave, NaN => 0)
     else
@@ -376,37 +293,28 @@ function calc_eta_single(oi::OW3DInput, ts::Int, te::Int, x, y)
 
     dirg = dirg + mcallister_mwd.(fmatg / fm, oi.twist_angle) # MWD as a function of freq
     dirg = dirg .+ oi.mwd
+
+    kstarth = sqrt(oi.kmaxx * oi.kmaxy) - 1.00 * oi.k0
+    kmin = sqrt(kminx * kminy)
+    kmax = sqrt(oi.kmaxx * oi.kmaxy)
+    kstartl = 0.5 * oi.k0
+    Ism = abs.(kmatg) .>= kstarth .&& abs.(kmatg) .<= kmax
+    Isml = abs.(kmatg) .>= kmin .&& abs.(kmatg) .<= kstartl
+    ampg_newwave[Ism] .= ampg_newwave[Ism] .* (0.5 * (cos.(((abs.(kmatg[Ism]) .- kstarth) ./ (kmax .- kstarth)) * pi) .+ 1))
+    ampg_newwave[Isml] .= ampg_newwave[Isml] .* (0.5 * (cos.(((abs.(kmatg[Isml]) .- kstartl) ./ (kmin .- kstartl)) * pi) .+ 1))
+    ampg_newwave[abs.(kmatg).>=kmax] .= 0
+    ampg_newwave[abs.(kmatg).<=kmin] .= 0
+    ampg_newwave[isnan.(ampg_newwave)] .= 0
     kxmatg = kmatg .* cos.(dirg * (pi / 180)) #Component of k in x direction
     kymatg = kmatg .* sin.(dirg * (pi / 180)) #Component of k in y direction
-    # wtmatg = wmatg * oi.stime       #omega * t
-
-    # ksmx = oi.kmaxx - 1.00 * oi.k0 # start smoothing kx truncation
-    # ksmxl = 0.5 * oi.k0 # start smoothing kx lower-bound
-    # Ismx = abs.(kxmatg) .>= ksmx .&& abs.(kxmatg) .<= oi.kmaxx
-    # Ismxl = abs.(kxmatg) .>= kminx .&& abs.(kxmatg) .<= ksmxl
-    # ampg_newwave[Ismx] .= ampg_newwave[Ismx] .* (0.5 * (cos.(((abs.(kxmatg[Ismx]) .- ksmx) ./ (oi.kmaxx .- ksmx)) * (pi)) .+ 1)) .^ (1)
-    # ampg_newwave[Ismxl] .= ampg_newwave[Ismxl] .* (0.5 * (cos.(((abs.(kxmatg[Ismxl]) .- ksmxl) ./ (kminx .- ksmxl)) * (pi)) .+ 1)) .^ (1)
-    # ampg_newwave[abs.(kxmatg).>=oi.kmaxx] .= 0
-    # ampg_newwave[abs.(kxmatg).<=kminx] .= 0
-
-    # ksmy = oi.kmaxy - 1.00 * oi.k0 # start smoothing ky truncation
-    # ksmyl = 0.5 * oi.k0 # start smoothing ky lower-bound
-    # Ismy = abs.(kymatg) .>= ksmy .&& abs.(kymatg) .<= oi.kmaxy
-    # Ismyl = abs.(kymatg) .>= kminy .&& abs.(kymatg) .<= ksmyl
-    # ampg_newwave[Ismy] .= ampg_newwave[Ismy] .* (0.5 * (cos.(((abs.(kymatg[Ismy]) .- ksmy) ./ (oi.kmaxy .- ksmy)) * (pi)) .+ 1)) .^ (1)
-    # ampg_newwave[Ismyl] .= ampg_newwave[Ismyl] .* (0.5 * (cos.(((abs.(kymatg[Ismyl]) .- ksmyl) ./ (kminy .- ksmyl)) * (pi)) .+ 1)) .^ (1)
-    # ampg_newwave[abs.(kymatg).>=oi.kmaxy] .= 0
-    # ampg_newwave[abs.(kymatg).<=kminy] .= 0
-
     ampg_newwave_norm = oi.A * (ampg_newwave ./ sum(ampg_newwave)) #  normalise to control size of event
-    # return ampg_newwave_norm
     (nkx, nky) = size(ampg_newwave_norm)
     # Generate full-domain
 
     t = ts:te
-    wtmatg_arr = [ωmatg * _t for _t in t]
-    η = _calc_eta_single(oi, kxmatg, kymatg, wtmatg_arr, ampg_newwave_norm, x, y)
-    # ϕ = calc_phi(oi, kmatg, kxmatg, kymatg, wtmatg, ampg_newwave_norm, η)
-    η
+    η = calc_eta(oi, kxmatg, kymatg, ωmatg, t, ampg_newwave_norm, x, y)
+    # ϕ = calc_phi(oi, kxmatg, kymatg, ωmatg, t, ampg_newwave_norm, x, y)
+    ϕ = zeros(length(t))
+    η, ϕ
 end
 end
