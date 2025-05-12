@@ -41,6 +41,7 @@ struct OW3DInput{T}
     spreading_type::String
     spreading_param::Float64
     twist_angle::Float64
+    mwd::Float64
 end
 
 function mcallister_mwd(foverfp::Float64, skewd::Float64)
@@ -282,6 +283,7 @@ function calc_etaphi(oi::OW3DInput, t::Number)
     end
 
     dirg = dirg + mcallister_mwd.(fmatg / fm, oi.twist_angle) # MWD as a function of freq
+    dirg = dirg .+ oi.mwd
     kxmatg = kmatg .* cos.(dirg * (pi / 180)) #Component of k in x direction
     kymatg = kmatg .* sin.(dirg * (pi / 180)) #Component of k in y direction
     # wtmatg = wmatg * oi.stime       #omega * t
@@ -501,6 +503,7 @@ function calc_eta_origin(oi::OW3DInput, ts::Int, te::Int)
     end
 
     dirg = dirg + mcallister_mwd.(fmatg / fm, oi.twist_angle) # MWD as a function of freq
+    dirg = dirg .+ oi.mwd
     kxmatg = kmatg .* cos.(dirg * (pi / 180)) #Component of k in x direction
     kymatg = kmatg .* sin.(dirg * (pi / 180)) #Component of k in y direction
     # wtmatg = wmatg * oi.stime       #omega * t
