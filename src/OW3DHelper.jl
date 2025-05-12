@@ -7,9 +7,7 @@ using LoopVectorization
 export
     OW3DInput,
     calc_etaphi,
-    calc_kmatg,
     JSpec,
-    calc_dirg,
     calc_eta_origin
 
 const g::Float64 = 9.81
@@ -52,134 +50,6 @@ function mcallister_mwd(foverfp::Float64, skewd::Float64)
         theta = (tanh(2 * foverfp - 3.5) / tanh(1.5) + 1) * skewd / 2
     end
     return theta
-end
-
-function calc_dirg(oi::OW3DInput)
-    kminx = 2 * pi / (oi.dx * oi.nx)
-    kminy = 2 * pi / (oi.dy * oi.ny)
-
-    # kxi = range(kminx, oi.kmaxx, 50)
-    # kyi = range(kminy, oi.kmaxy, 50)
-    kxi = kminx * (-(oi.nx - 1)/2:1:(oi.nx-1)/2)
-    kyi = kminy * (-(oi.ny - 1)/2:1:(oi.ny-1)/2)
-    # max of kxi converges to pi/oi.dx with nx->inf quite quickly
-    kx = kxi[abs.(kxi).<=oi.kmaxx] # wavenumber components in x-direction
-    ky = kyi[abs.(kyi).<=oi.kmaxy] # wavenumber components in y-direction
-
-    #Note: wave components calculated directly from the power spectrum as a
-    #characterisitc feature of the NewWave formulation but it would usually be
-    #necessary to transform the power spectrum into an amplitude spectrum
-    #before calculating the wave components
-    nkx = length(kx)
-    nky = length(ky)
-    kmatg = zeros(nkx, nky)
-    wmatg = zeros(nkx, nky)
-    fmatg = zeros(nkx, nky)
-    ampg = zeros(nkx, nky)
-    dirg = zeros(nkx, nky)
-
-    # Generate spectrum. Type J is JONSWAP spectrum
-    fm = 0.0836708928777909 #depth = 200m
-    if typeof(oi.spec) == JSpec
-
-        #NOTE: the value of fm is depth dependent!
-        #peak of JONSWAP ensures kp of 0.02796 [m^-1]
-        #fm=0.0787103953986135; #depth = 50m
-
-        for i = 1:nkx
-            for j = 1:nky
-                kAbs = sqrt((kx[i])^2 + (ky[j])^2) #wavenumber of component
-                theta = atan(ky[j], kx[i]) * 180 / pi #direction of component
-                ω = sqrt(kAbs * g .* tanh(kAbs * oi.depth)) #natural frequency of component
-                f = (1 / (2 * pi)) * ω #natural frequencies in Hertz
-                kmatg[i, j] = kAbs
-                dirg[i, j] = theta
-                ωmatg[i, j] = ω
-                fmatg[i, j] = f
-            end
-        end
-
-        sj = zeros(nkx, nky) #bandwidth parameters of JONSWAP
-        sj[fmatg.<=fm] .= 0.07
-        sj[fmatg.>fm] .= 0.09
-
-        #JONSWAP spectrum based on wavenumber
-        kd = oi.k0 * oi.depth
-        D = (g^2) * ((2 * pi)^(-6)) * (0.5 * g) * (tanh(kd) + kd * ((sech(kd))^2))
-        h1 = fmatg .^ (-6) #differs from frequency version due to Jacobian
-        h2 = exp.((-5 / 4) * ((fmatg / fm) .^ (-4))) #exponential function
-        h3 = oi.spec.γ .^ (exp.(-0.5 * ((((fmatg / fm) .- 1) ./ (sj)) .^ 2))) #peak enhancement
-        Spec = D * h1 .* h2 .* h3
-        # Ignore "alpha" coefficient since this is a scaling parameter
-        # Distribution valid for S(ω) & S(f) since scaled with normalisation
-
-        if oi.spreading_type == "W"
-            Sdir = exp.(-0.5 * (dirg .^ 2) ./ (oi.spreading_param^2)) # A wrapped normal spreading function with parameter sigma
-        end
-        if oi.spreading_type == "T"
-            Sdir = exp(-0.5 * (dirg .^ 2) ./ (oi.spreading_param^2))
-        end
-        if oi.spreading_type == "E"
-
-            s = zeros(1, len)
-            tm1 = zeros(1, len)
-            tm2 = zeros(1, len)
-            BM = zeros(1, len)
-
-            IL = fmatg .< fm
-            IG = fmatg .>= fm
-
-            s[IL] .= 0.0 .+ 1.0 * ((fmatg[IL] ./ fm) .^ (-7.929))
-            s[IG] .= 0.0 .- 1.0 * ((fmatg[IG] ./ fm) .^ (-2))
-
-            tm1[IL] .+= 14.93 / 2
-            tm2[IL] .-= 14.93 / 2
-
-            tm1[IG] .+= (1 / 2) * (exp.(5.453 .- 2.750 .* ((fmatg[IG] ./ fm) .^ (-1))))
-            tm2[IG] .-= (1 / 2) * (exp.(5.453 .- 2.750 .* ((fmatg[IG] ./ fm) .^ (-1))))
-
-            E = (1 / (sqrt(8 * pi))) * (1 ./ s)
-
-            for kk = -10:1:10
-                BM1 = exp.((-0.5) * ((((pi / 180) * dirg .- (pi / 180) * tm1 .- 2 * pi * kk) ./ ((pi / 180) * s)) .^ 2))
-                BM2 = exp.((-0.5) * ((((pi / 180) * dirg .- (pi / 180) * tm2 .- 2 * pi * kk) ./ ((pi / 180) * s)) .^ 2))
-                BM .+= BM1 + BM2
-            end
-
-            Sdir = E .* BM # Ewans bi-modal spreading function
-
-        end
-
-        ampg_newwave = 1 ./ kmatg .* Spec .* Sdir #amplitude of component - S(kx,ky)
-    else
-        println("spectrum not recognised")
-    end
-
-    dirg = dirg + mcallister_mwd.(fmatg / fm, oi.twist_angle) # MWD as a function of freq
-    kxmatg = kmatg .* cos.(dirg * (pi / 180)) #Component of k in x direction
-    kymatg = kmatg .* sin.(dirg * (pi / 180)) #Component of k in y direction
-    wtmatg = wmatg * oi.stime       #omega * t
-
-    ksmx = oi.kmaxx - 1.00 * oi.k0 # start smoothing kx truncation
-    ksmy = oi.kmaxy - 1.00 * oi.k0 # start smoothing ky truncation
-    ksmxl = 0.5 * oi.k0 # start smoothing kx lower-bound
-    ksmyl = 0.5 * oi.k0 # start smoothing ky lower-bound
-    Ismx = abs.(kxmatg) .>= ksmx .&& abs.(kxmatg) .<= oi.kmaxx
-    Ismy = abs.(kymatg) .>= ksmy .&& abs.(kymatg) .<= oi.kmaxy
-    Ismxl = abs.(kxmatg) .>= kminx .&& abs.(kxmatg) .<= ksmxl
-    Ismyl = abs.(kymatg) .>= kminy .&& abs.(kymatg) .<= ksmyl
-    ampg_newwave[Ismx] .= ampg_newwave[Ismx] .* (0.5 * (cos.(((abs.(kxmatg[Ismx]) .- ksmx) ./ (oi.kmaxx .- ksmx)) * (pi)) .+ 1)) .^ (1)
-    ampg_newwave[Ismy] .= ampg_newwave[Ismy] .* (0.5 * (cos.(((abs.(kymatg[Ismy]) .- ksmy) ./ (oi.kmaxy .- ksmy)) * (pi)) .+ 1)) .^ (1)
-    ampg_newwave[Ismxl] .= ampg_newwave[Ismxl] .* (0.5 * (cos.(((abs.(kxmatg[Ismxl]) .- ksmxl) ./ (kminx .- ksmxl)) * (pi)) .+ 1)) .^ (1)
-    ampg_newwave[Ismyl] .= ampg_newwave[Ismyl] .* (0.5 * (cos.(((abs.(kymatg[Ismyl]) .- ksmyl) ./ (kminy .- ksmyl)) * (pi)) .+ 1)) .^ (1)
-    ampg_newwave[abs.(kxmatg).>=oi.kmaxx] .= 0
-    ampg_newwave[abs.(kymatg).>=oi.kmaxy] .= 0
-    ampg_newwave[abs.(kxmatg).<=kminx] .= 0
-    ampg_newwave[abs.(kymatg).<=kminy] .= 0
-
-
-    ampg_newwave_norm = oi.A * (ampg_newwave ./ sum(ampg_newwave)) #  normalise to control size of event
-    return dirg, kxmatg, kymatg, wtmatg, ampg_newwave_norm, kmatg, Spec, Sdir
 end
 
 function calc_etaphi(oi::OW3DInput, t::Number)
