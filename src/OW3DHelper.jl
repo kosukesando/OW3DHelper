@@ -10,7 +10,6 @@ export
     OW3DInput,
     calc_etaphi,
     JSpec,
-    calc_eta_origin,
     export_ow3d_init,
     open_EP
 
@@ -56,7 +55,7 @@ function mcallister_mwd(foverfp::Float64, skewd::Float64)
     return theta
 end
 
-function calc_etaphi(oi::OW3DInput, t::Number)
+function calc_k_omega_a(oi)
     kminx = 2 * pi / (oi.dx * oi.nx)
     kminy = 2 * pi / (oi.dy * oi.ny)
 
@@ -141,13 +140,23 @@ function calc_etaphi(oi::OW3DInput, t::Number)
     kymatg = kmatg .* sin.(dirg * (pi / 180)) #Component of k in y direction
 
     ampg_newwave_norm = oi.A * (ampg_newwave ./ sum(ampg_newwave)) #  normalise to control size of event
-    (nkx, nky) = size(ampg_newwave_norm)
-    # Generate full-domain
-    xvec = oi.dx * (-(oi.nx - 1)/2:1:(oi.nx-1)/2)
-    yvec = oi.dy * (-(oi.ny - 1)/2:1:(oi.ny-1)/2)
 
+    kxmatg, kymatg, ampg_newwave_norm
+end
+
+function calc_etaphi(oi::OW3DInput, t::Number)
+    kxmatg, kymatg, ωmatg, ampg_newwave_norm = calc_k_omega_a(oi)
     η = calc_eta(oi, kxmatg, kymatg, ωmatg, t, ampg_newwave_norm)
-    ϕ = calc_phi(oi, kmatg, kxmatg, kymatg, ωmatg, t, ampg_newwave_norm, η)
+    ϕ = calc_phi(oi, kxmatg, kymatg, ωmatg, t, ampg_newwave_norm, η)
+    η, ϕ
+end
+
+function calc_etaphi(oi::OW3DInput, ts::Int, te::Int, x, y)
+    kxmatg, kymatg, ωmatg, ampg_newwave_norm = calc_k_omega_a(oi)
+    t = ts:te
+    η = calc_eta(oi, kxmatg, kymatg, ωmatg, t, ampg_newwave_norm, x, y)
+    # ϕ = calc_phi(oi, kxmatg, kymatg, ωmatg, t, ampg_newwave_norm, x, y)
+    ϕ = zeros(length(t))
     η, ϕ
 end
 
@@ -196,7 +205,7 @@ function calc_eta(oi, kxmatg, kymatg, ωmatg, t_vec, ampg_newwave_norm, x::Float
     η
 end
 
-function calc_phi(oi, kmatg, kxmatg, kymatg, ωmatg, t, ampg_newwave_norm, η)
+function calc_phi(oi, kxmatg, kymatg, ωmatg, t, ampg_newwave_norm, η)
     (nkx, nky) = size(ampg_newwave_norm)
     # Generate full-domain
     xvec = oi.dx * (-(oi.nx - 1)/2:1:(oi.nx-1)/2)
@@ -206,9 +215,9 @@ function calc_phi(oi, kmatg, kxmatg, kymatg, ωmatg, t, ampg_newwave_norm, η)
     Threads.@threads for kj = eachindex(1:nky)
         for ki = eachindex(1:nkx)
             # for kj in eachindex(1:nky)
-            k = kmatg[ki, kj]
             kx = kxmatg[ki, kj]
             ky = kymatg[ki, kj]
+            k = sqrt(kx^2 + ky^2)
             ω = ωmatg[ki, kj]
             an = ampg_newwave_norm[ki, kj]
             for xi in eachindex(xvec)
@@ -229,101 +238,8 @@ function calc_etaphi_origin(oi::OW3DInput, ts::Int, te::Int)
     calc_etaphi(oi, ts, te, 0.0, 0.0)
 end
 
-function calc_etaphi(oi::OW3DInput, ts::Int, te::Int, x, y)
-    kminx = 2 * pi / (oi.dx * oi.nx)
-    kminy = 2 * pi / (oi.dy * oi.ny)
-
-    kxi = kminx * (-(oi.nx - 1)/2:1:(oi.nx-1)/2)
-    kyi = kminy * (-(oi.ny - 1)/2:1:(oi.ny-1)/2)
-    # max of kxi converges to pi/oi.dx with nx->inf quite quickly
-    kx = kxi[abs.(kxi).<=oi.kmaxx] # wavenumber components in x-direction
-    ky = kyi[abs.(kyi).<=oi.kmaxy] # wavenumber components in y-direction
-
-    #Note: wave components calculated directly from the power spectrum as a
-    #characterisitc feature of the NewWave formulation but it would usually be
-    #necessary to transform the power spectrum into an amplitude spectrum
-    #before calculating the wave components
-    nkx = length(kx)
-    nky = length(ky)
-    kmatg = zeros(nkx, nky)
-    ωmatg = zeros(nkx, nky)
-    fmatg = zeros(nkx, nky)
-    ampg = zeros(nkx, nky)
-    dirg = zeros(nkx, nky)
-
-    # Generate spectrum. Type J is JONSWAP spectrum
-    fm = 0.0836708928777909 #depth = 200m
-    if typeof(oi.spec) == JSpec
-
-        #NOTE: the value of fm is depth dependent!
-        #peak of JONSWAP ensures kp of 0.02796 [m^-1]
-        #fm=0.0787103953986135; #depth = 50m
-
-        for i = 1:nkx
-            for j = 1:nky
-                kAbs = sqrt((kx[i])^2 + (ky[j])^2) #wavenumber of component
-                theta = atan(ky[j], kx[i]) * 180 / pi #direction of component
-                ω = sqrt(kAbs * g .* tanh(kAbs * oi.depth)) #natural frequency of component
-                f = (1 / (2 * pi)) * ω #natural frequencies in Hertz
-                kmatg[i, j] = kAbs
-                dirg[i, j] = theta
-                ωmatg[i, j] = ω
-                fmatg[i, j] = f
-            end
-        end
-
-        sj = zeros(nkx, nky) #bandwidth parameters of JONSWAP
-        sj[fmatg.<=fm] .= 0.07
-        sj[fmatg.>fm] .= 0.09
-
-        #JONSWAP spectrum based on wavenumber
-        kd = oi.k0 * oi.depth
-        D = (g^2) * ((2 * pi)^(-6)) * (0.5 * g) * (tanh(kd) + kd * ((sech(kd))^2))
-        h1 = fmatg .^ (-6) #differs from frequency version due to Jacobian
-        h2 = exp.((-5 / 4) * ((fmatg / fm) .^ (-4))) #exponential function
-        h3 = oi.spec.γ .^ (exp.(-0.5 * ((((fmatg / fm) .- 1) ./ (sj)) .^ 2))) #peak enhancement
-        Spec = D * h1 .* h2 .* h3
-        # Ignore "alpha" coefficient since this is a scaling parameter
-        # Distribution valid for S(w) & S(f) since scaled with normalisation
-
-        if oi.spreading_type == "W"
-            Sdir = exp.(-0.5 * (dirg .^ 2) ./ (oi.spreading_param^2)) # A wrapped normal spreading function with parameter sigma
-        end
-        ampg_newwave = 1 ./ kmatg .* Spec .* Sdir #amplitude of component - S(kx,ky)
-        replace!(ampg_newwave, NaN => 0)
-    else
-        println("spectrum not recognised")
-    end
-
-    dirg = dirg + mcallister_mwd.(fmatg / fm, oi.twist_angle) # MWD as a function of freq
-    dirg = dirg .+ oi.mwd
-
-    kstarth = sqrt(oi.kmaxx * oi.kmaxy) - 1.00 * oi.k0
-    kmin = sqrt(kminx * kminy)
-    kmax = sqrt(oi.kmaxx * oi.kmaxy)
-    kstartl = 0.5 * oi.k0
-    Ism = abs.(kmatg) .>= kstarth .&& abs.(kmatg) .<= kmax
-    Isml = abs.(kmatg) .>= kmin .&& abs.(kmatg) .<= kstartl
-    ampg_newwave[Ism] .= ampg_newwave[Ism] .* (0.5 * (cos.(((abs.(kmatg[Ism]) .- kstarth) ./ (kmax .- kstarth)) * pi) .+ 1))
-    ampg_newwave[Isml] .= ampg_newwave[Isml] .* (0.5 * (cos.(((abs.(kmatg[Isml]) .- kstartl) ./ (kmin .- kstartl)) * pi) .+ 1))
-    ampg_newwave[abs.(kmatg).>=kmax] .= 0
-    ampg_newwave[abs.(kmatg).<=kmin] .= 0
-    ampg_newwave[isnan.(ampg_newwave)] .= 0
-    kxmatg = kmatg .* cos.(dirg * (pi / 180)) #Component of k in x direction
-    kymatg = kmatg .* sin.(dirg * (pi / 180)) #Component of k in y direction
-    ampg_newwave_norm = oi.A * (ampg_newwave ./ sum(ampg_newwave)) #  normalise to control size of event
-    (nkx, nky) = size(ampg_newwave_norm)
-    # Generate full-domain
-
-    t = ts:te
-    η = calc_eta(oi, kxmatg, kymatg, ωmatg, t, ampg_newwave_norm, x, y)
-    # ϕ = calc_phi(oi, kxmatg, kymatg, ωmatg, t, ampg_newwave_norm, x, y)
-    ϕ = zeros(length(t))
-    η, ϕ
-end
-
 function export_ow3d_init(η, ϕ, stime, oi::OW3DInput, dir)
-    println("generating output file...")
+    println("generating initial file...")
     file_name = "OceanWave3D_$(oi.nx)x$(oi.ny)_$(round(Int,100*oi.A))cm_rot$(round(Int,oi.twist_angle))_phase$(round(Int,oi.ϕ))_depth$(round(Int,oi.depth))_mwd$(round(Int,oi.mwd)).init"
     Lx = (oi.nx - 1) * oi.dx
     Ly = (oi.ny - 1) * oi.dy
