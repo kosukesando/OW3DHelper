@@ -238,9 +238,13 @@ function calc_etaphi_origin(oi::OW3DInput, ts::Int, te::Int)
     calc_etaphi(oi, ts, te, 0.0, 0.0)
 end
 
-function export_ow3d_init(η, ϕ, stime, oi::OW3DInput, dir)
+function export_ow3d_init(η, ϕ, stime, oi::OW3DInput, dir; include_param=true)
     println("generating initial file...")
-    file_name = "OceanWave3D_$(oi.nx)x$(oi.ny)_$(round(Int,100*oi.A))cm_rot$(round(Int,oi.twist_angle))_phase$(round(Int,oi.ϕ))_depth$(round(Int,oi.depth))_mwd$(round(Int,oi.mwd)).init"
+    if include_param
+        file_name = "OceanWave3D_$(oi.nx)x$(oi.ny)_$(round(Int,100*oi.A))cm_rot$(round(Int,oi.twist_angle))_phase$(round(Int,oi.ϕ))_depth$(round(Int,oi.depth))_mwd$(round(Int,oi.mwd)).init"
+    else
+        file_name = "OceanWave3D.init"
+    end
     Lx = (oi.nx - 1) * oi.dx
     Ly = (oi.ny - 1) * oi.dy
     fpath = joinpath(dir, file_name)
