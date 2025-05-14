@@ -255,8 +255,8 @@ function export_ow3d_init(η, ϕ, stime, oi::OW3DInput, dir)
     end
 end
 
-function open_EP(dir)
-    io_ep = open(dir)
+function open_EP(fpath)
+    io_ep = open(fpath)
     seek(io_ep, sizeof(Int32))
     Nx = read(io_ep, Int32)
     Ny = read(io_ep, Int32)
