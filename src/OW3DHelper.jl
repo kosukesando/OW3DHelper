@@ -11,7 +11,8 @@ export
     calc_etaphi,
     JSpec,
     export_ow3d_init,
-    open_EP
+    open_EP,
+    generate_init
 
 const g::Float64 = 9.81
 
@@ -43,6 +44,7 @@ struct OW3DInput{T}
     spreading_param::Float64
     twist_angle::Float64
     mwd::Float64
+    twist_type::String
 end
 
 function mcallister_mwd(foverfp::Float64, skewd::Float64)
@@ -121,7 +123,9 @@ function calc_k_omega_a(oi)
         println("spectrum not recognised")
     end
 
-    dirg = dirg + mcallister_mwd.(fmatg / fm, oi.twist_angle) # MWD as a function of freq
+    if oi.twist_type == "mcallister"
+        dirg = dirg + mcallister_mwd.(fmatg / fm, oi.twist_angle) # MWD as a function of freq
+    end
     dirg = dirg .+ oi.mwd
 
     kstarth = sqrt(oi.kmaxx * oi.kmaxy) - 1.00 * oi.k0
@@ -257,6 +261,16 @@ function export_ow3d_init(η, ϕ, stime, oi::OW3DInput, dir; include_param=true)
             end
         end
     end
+end
+
+function generate_init(A, ϕ, k0, kmaxx, kmaxy, depth, dx, dy, nx, ny, spectrum::String, spreading_type::String, spreading_param, twist_angle, mwd, t; twist_type::String="mcallister", γ=3.3, dir=".")
+    if spectrum == "JONSWAP"
+        spec = JSpec(γ)
+    end
+
+    oi = OW3DInput(A, ϕ, k0, kmaxx, kmaxy, depth, dx, dy, nx, ny, spec, spreading_type, spreading_param, twist_angle, mwd, twist_type)
+    eta, phi = calc_etaphi(oi, t)
+    export_ow3d_init(eta, phi, 0, oi, dir)
 end
 
 function open_EP(fpath)
