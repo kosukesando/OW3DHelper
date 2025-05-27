@@ -145,7 +145,7 @@ function calc_k_omega_a(oi)
 
     ampg_newwave_norm = oi.A * (ampg_newwave ./ sum(ampg_newwave)) #  normalise to control size of event
 
-    kxmatg, kymatg, ampg_newwave_norm
+    kxmatg, kymatg, ωmatg, ampg_newwave_norm
 end
 
 function calc_etaphi(oi::OW3DInput, t::Number)
