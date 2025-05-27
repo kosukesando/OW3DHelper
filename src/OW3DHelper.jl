@@ -263,7 +263,7 @@ function export_ow3d_init(η, ϕ, stime, oi::OW3DInput, dir; include_param=true)
     end
 end
 
-function generate_init(A, ϕ, k0, kmaxx, kmaxy, depth, dx, dy, nx, ny, spectrum::String, spreading_type::String, spreading_param, twist_angle, mwd, t; twist_type::String="mcallister", γ=3.3, dir=".")
+function generate_init(A::Float64, ϕ::Float64, k0::Float64, kmaxx::Float64, kmaxy::Float64, depth::Float64, dx::Float64, dy::Float64, nx::Int, ny::Int, spectrum::String, spreading_type::String, spreading_param::Float64, twist_angle::Float64, mwd::Float64, t::Float64; twist_type::String="mcallister", γ=3.3, dir=".")
     if spectrum == "JONSWAP"
         spec = JSpec(γ)
     end
