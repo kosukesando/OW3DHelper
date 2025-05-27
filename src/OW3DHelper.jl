@@ -270,7 +270,7 @@ function generate_init(A::Float64, ϕ::Float64, k0::Float64, kmaxx::Float64, kma
 
     oi = OW3DInput(A, ϕ, k0, kmaxx, kmaxy, depth, dx, dy, nx, ny, spec, spreading_type, spreading_param, twist_angle, mwd, twist_type)
     eta, phi = calc_etaphi(oi, t)
-    export_ow3d_init(eta, phi, 0, oi, dir)
+    export_ow3d_init(eta, phi, 0, oi, dir; include_param=false)
 end
 
 function open_EP(fpath)
