@@ -1,10 +1,6 @@
 module OW3DHelper
 # using SpecialFunctions
-using ProgressLogging
-using TerminalLoggers
-using LoopVectorization
 using Printf
-using Dates
 
 export
     OW3DInput,
@@ -45,6 +41,18 @@ struct OW3DInput{T}
     twist_angle::Float64
     mwd::Float64
     twist_type::String
+end
+
+struct KinematicSetting
+    xbeg::Int
+    xend::Int
+    xstride::Int
+    ybeg::Int
+    yend::Int
+    ystride::Int
+    tbeg::Int
+    tend::Int
+    tstride::Int
 end
 
 function mcallister_mwd(foverfp::Float64, skewd::Float64)
@@ -272,6 +280,39 @@ function generate_init(A::Float64, ϕ::Float64, k0::Float64, kmaxx::Float64, kma
     eta, phi = calc_etaphi(oi, t)
     export_ow3d_init(eta, phi, 0, oi, dir; include_param=false)
 end
+
+function export_ow3d_inp(oi::OW3DInput, nt, kinematics, dir; nz=9, di_kine=5, dt=0.2)
+    println("generating input file...")
+    file_name = "OceanWave3D_$(oi.nx)x$(oi.ny)_$(round(Int,100*oi.A))cm_rot$(round(Int,oi.twist_angle))_phase$(round(Int,oi.ϕ))_depth$(round(Int,oi.depth))_mwd$(round(Int,oi.mwd)).inp"
+    Lx = (oi.nx - 1) * oi.dx
+    Ly = (oi.ny - 1) * oi.dy
+    fpath = joinpath(dir, file_name)
+    open(fpath, "w") do file
+        write(file, @sprintf "Tropical Cyclone focus wave H=%f nx=%d ny=%d dx=%f dy=%f depth=%f phase=%f Twist=%f MWD=%f" oi.A oi.nx oi.ny oi.dx oi.dy oi.depth oi.ϕ oi.twist_angle oi.mwd)
+
+        write(file, "A flat bottom, focused wave initial condition in 3D")
+        write(file, "-1 2")
+        write(file, @sprintf "%f %f %f %d %d %d 0 0 1 1 1 1" Lx Ly oi.depth oi.nx oi.ny nz)
+        write(file, "3 3 3 1 1 1")
+        write(file, @sprintf "%d %f 1 0 1" nt dt)
+        write(file, "9.81")
+        write(file, "1 3 0 55 1e-6 1e-6 1 V 1 1 20")
+        write(file, "0.05 1.00 1.84 2 0 0 1 6 32")
+        write(file, @sprintf "%d 20 1 %d" di_kine length(kinematics))
+        for kinematic in kinematics
+            write(file, @sprintf "%d %d %d %d %d %d %d %d %d" kinematic.xbeg kinematic.xend kinematic.xstride kinematic.ybeg kinematic.yend kinematic.ystride kinematic.tbeg kinematic.tend kinematic.tstride)
+        end
+        write(file, "1 0")
+        write(file, "0 6 10 0.08 0.08 0.4")
+        write(file, "0 8. 3 Y 0.0")
+        write(file, "0 0")
+        write(file, "0 2.0 2 0 0 1 0")
+        write(file, "0")
+        write(file, "33  8. 2. 80. 20. -1 -11 100. 50. run06.el 22.5 1.0 3.3")
+    end
+end
+
+
 
 function open_EP(fpath)
     io_ep = open(fpath)
