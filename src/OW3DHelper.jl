@@ -263,7 +263,7 @@ function export_ow3d_init(η, ϕ, stime, oi::OW3DInput, dir; include_param=true)
     Ly = (oi.ny - 1) * oi.dy
     fpath = joinpath(dir, file_name)
     open(fpath, "w") do file
-        write(file, @sprintf "Tropical Cyclone focus wave H=%f nx=%d ny=%d dx=%f dy=%f depth=%f phase=%f Twist=%f MWD=%f" oi.A oi.nx oi.ny oi.dx oi.dy oi.depth oi.ϕ oi.twist_angle oi.mwd)
+        write(file, @sprintf "Tropical Cyclone focus wave H=%0.3f nx=%d ny=%d dx=%0.3f dy=%0.3f depth=%0.3f phase=%0.3f Twist=%0.3f MWD=%0.3f" oi.A oi.nx oi.ny oi.dx oi.dy oi.depth oi.ϕ oi.twist_angle oi.mwd)
         write(file, @sprintf "\n%12e %12e %d %d %12e" Lx Ly oi.nx oi.ny stime)
         for ry = 1:oi.ny
             for rx = 1:oi.nx
@@ -295,25 +295,25 @@ function export_ow3d_inp(oi::OW3DInput, nt, kinematics, dir; include_param=true,
     fpath = joinpath(dir, file_name)
     open(fpath, "w") do file
         write(file, "A flat bottom, focused wave initial condition in 3D\n")
-        write(file, "-1 2\n")
-        write(file, @sprintf "%f %f %f %d %d %d 0 0 1 1 1 1\n" Lx Ly oi.depth oi.nx oi.ny nz)
-        write(file, "3 3 3 1 1 1\n")
-        write(file, @sprintf "%d %f 1 0 1\n" nt dt)
-        write(file, "9.81\n")
-        write(file, "1 3 0 55 1e-6 1e-6 1 V 1 1 20\n")
-        write(file, "0.05 1.00 1.84 2 0 0 1 6 32\n")
-        write(file, @sprintf "%d 20 1 %d\n" di_kine length(kinematics))
+        write(file, "-1 2 \n")
+        write(file, @sprintf "%0.3f %0.3f %0.3f %d %d %d 0 0 1 1 1 1 \n" Lx Ly oi.depth oi.nx oi.ny nz)
+        write(file, "3 3 3 1 1 1 \n")
+        write(file, @sprintf "%d %0.3f 1 0 1 \n" nt dt)
+        write(file, "9.81 \n")
+        write(file, "1 3 0 55 1e-6 1e-6 1 V 1 1 20 \n")
+        write(file, "0.05 1.00 1.84 2 0 0 1 6 32 \n")
+        write(file, @sprintf "%d 20 1 %d \n" di_kine length(kinematics))
         for kinematic in kinematics
-            write(file, @sprintf "%d %d %d %d %d %d %d %d %d\n" kinematic.xbeg kinematic.xend kinematic.xstride kinematic.ybeg kinematic.yend kinematic.ystride kinematic.tbeg kinematic.tend kinematic.tstride)
+            write(file, @sprintf "%d %d %d %d %d %d %d %d %d \n" kinematic.xbeg kinematic.xend kinematic.xstride kinematic.ybeg kinematic.yend kinematic.ystride kinematic.tbeg kinematic.tend kinematic.tstride)
         end
-        write(file, "\n")
-        write(file, "1 0\n")
-        write(file, "0 6 10 0.08 0.08 0.4\n")
-        write(file, "0 8. 3 Y 0.0\n")
-        write(file, "0 0\n")
-        write(file, "0 2.0 2 0 0 1 0\n")
-        write(file, "0\n")
-        write(file, "33  8. 2. 80. 20. -1 -11 100. 50. run06.el 22.5 1.0 3.3\n")
+        write(file, " \n")
+        write(file, "1 0 \n")
+        write(file, "0 6 10 0.08 0.08 0.4 \n")
+        write(file, "0 8. 3 Y 0.0 \n")
+        write(file, "0 0 \n")
+        write(file, "0 2.0 2 0 0 1 0 \n")
+        write(file, "0 \n")
+        write(file, "33  8. 2. 80. 20. -1 -11 100. 50. run06.el 22.5 1.0 3.3 \n")
     end
 end
 
