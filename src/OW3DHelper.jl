@@ -294,8 +294,6 @@ function export_ow3d_inp(oi::OW3DInput, nt, kinematics, dir; include_param=true,
     Ly = (oi.ny - 1) * oi.dy
     fpath = joinpath(dir, file_name)
     open(fpath, "w") do file
-        write(file, @sprintf "Tropical Cyclone focus wave H=%f nx=%d ny=%d dx=%f dy=%f depth=%f phase=%f Twist=%f MWD=%f\n" oi.A oi.nx oi.ny oi.dx oi.dy oi.depth oi.ϕ oi.twist_angle oi.mwd)
-
         write(file, "A flat bottom, focused wave initial condition in 3D\n")
         write(file, "-1 2\n")
         write(file, @sprintf "%f %f %f %d %d %d 0 0 1 1 1 1\n" Lx Ly oi.depth oi.nx oi.ny nz)
