@@ -295,7 +295,7 @@ function export_ow3d_inp(oi::OW3DInput, nt, kinematics, dir; include_param=true,
     fpath = joinpath(dir, file_name)
     open(fpath, "w") do file
         write(file, "A flat bottom, focused wave initial condition in 3D\n")
-        write(file, "-1 2 \n")
+        write(file, "-1 2 x\n")
         write(file, @sprintf "%0.3f %0.3f %0.3f %d %d %d 0 0 1 1 1 1 \n" Lx Ly oi.depth oi.nx oi.ny nz)
         write(file, "3 3 3 1 1 1 \n")
         write(file, @sprintf "%d %0.3f 1 0 1 \n" nt dt)
