@@ -297,7 +297,7 @@ function export_ow3d_inp(oi::OW3DInput, nt, kinematics, dir; include_param=true,
         write(file, "A flat bottom, focused wave initial condition in 3D\n")
         write(
             file,
-            "-1 2                                  <- Initial condition (0=defined by funPressureTerm.f90, 1=NL standing wave, 2=shoaling on a smooth beach, 3=Whalin bar, ... see Initialization.f90:SetupInitialConditions); IncWaveType (0=none, 1=stream function, 2=linear regular or irregular waves)
+            "-1 2 0.5                                 <- Initial condition (0=defined by funPressureTerm.f90, 1=NL standing wave, 2=shoaling on a smooth beach, 3=Whalin bar, ... see Initialization.f90:SetupInitialConditions); IncWaveType (0=none, 1=stream function, 2=linear regular or irregular waves)
 \n"
         )
         write(file, @sprintf "%0.3f %0.3f %0.3f %d %d %d 0 0 1 1 1 1    <- Lx Ly Lz Nx Ny Nz GridX GridY GridZ(0=even,1=clustering) GhostGrid (0=off,1=on)
