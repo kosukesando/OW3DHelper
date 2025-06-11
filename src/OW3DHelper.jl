@@ -184,15 +184,15 @@ function calc_eta(oi, kxmatg, kymatg, ωmatg, t, ampg_newwave_norm)
     println("Calculating linear free surface")
     Threads.@threads for kj = eachindex(1:nky)
         for ki = eachindex(1:nkx)
-            kx = kxmatg[ki, kj]
-            ky = kymatg[ki, kj]
-            ω = ωmatg[ki, kj]
-            an = ampg_newwave_norm[ki, kj]
+            local kx = kxmatg[ki, kj]
+            local ky = kymatg[ki, kj]
+            local ω = ωmatg[ki, kj]
+            local an = ampg_newwave_norm[ki, kj]
             for yi = eachindex(yvec), xi = eachindex(xvec)
-                x = xvec[xi]
-                y = yvec[yi]
-                phasei = kx * x + ky * y - ω * t + oi.ϕ
-                etacomp = an * cos(phasei)
+                local x = xvec[xi]
+                local y = yvec[yi]
+                local phasei = kx * x + ky * y - ω * t + oi.ϕ
+                local etacomp = an * cos(phasei)
                 # if !isnan(etacomp)
                 η[xi, yi] += etacomp
                 # end
@@ -229,17 +229,17 @@ function calc_phi(oi, kxmatg, kymatg, ωmatg, t, ampg_newwave_norm, η)
     Threads.@threads for kj = eachindex(1:nky)
         for ki = eachindex(1:nkx)
             # for kj in eachindex(1:nky)
-            kx = kxmatg[ki, kj]
-            ky = kymatg[ki, kj]
-            k = sqrt(kx^2 + ky^2)
-            ω = ωmatg[ki, kj]
-            an = ampg_newwave_norm[ki, kj]
+            local kx = kxmatg[ki, kj]
+            local ky = kymatg[ki, kj]
+            local k = sqrt(kx^2 + ky^2)
+            local ω = ωmatg[ki, kj]
+            local an = ampg_newwave_norm[ki, kj]
             for xi in eachindex(xvec)
                 for yi in eachindex(yvec)
-                    x = xvec[xi]
-                    y = yvec[yi]
-                    phasei = kx * x + ky * y - ω * t + oi.ϕ
-                    phicomp = (an / (ω + 0.000000001)) * g * ((cosh(k * (η[xi, yi] + oi.depth)) / cosh(k * oi.depth)) * sin(phasei))
+                    local x = xvec[xi]
+                    local y = yvec[yi]
+                    local phasei = kx * x + ky * y - ω * t + oi.ϕ
+                    local phicomp = (an / (ω + 0.000000001)) * g * ((cosh(k * (η[xi, yi] + oi.depth)) / cosh(k * oi.depth)) * sin(phasei))
                     @views(ϕ[xi, yi] += phicomp)
                 end
             end
