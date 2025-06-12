@@ -193,19 +193,32 @@ function calc_eta(oi, kxmatg, kymatg, ωmatg, t, ampg_newwave_norm)
     yvec = oi.dy * (-(oi.ny - 1)/2:1:(oi.ny-1)/2)
     # Calculate linear free surface
     println("Calculating linear free surface")
-    @tasks for kj = eachindex(1:nky)
-        for ki = eachindex(1:nkx)
-            local kx = kxmatg[ki, kj]
-            local ky = kymatg[ki, kj]
-            local ω = ωmatg[ki, kj]
-            local an = ampg_newwave_norm[ki, kj]
-            for yi = eachindex(yvec), xi = eachindex(xvec)
-                local x = xvec[xi]
-                local y = yvec[yi]
-                local phasei = kx * x + ky * y - ω * t + deg2rad(oi.ϕ)
-                local etacomp = an * cos(phasei)
-                η[xi, yi] += etacomp
-            end
+    # @tasks for kj = eachindex(1:nky)
+    #     for ki = eachindex(1:nkx)
+    #         local kx = kxmatg[ki, kj]
+    #         local ky = kymatg[ki, kj]
+    #         local ω = ωmatg[ki, kj]
+    #         local an = ampg_newwave_norm[ki, kj]
+    #         for yi = eachindex(yvec), xi = eachindex(xvec)
+    #             local x = xvec[xi]
+    #             local y = yvec[yi]
+    #             local phasei = kx * x + ky * y - ω * t + deg2rad(oi.ϕ)
+    #             local etacomp = an * cos(phasei)
+    #             η[xi, yi] += etacomp
+    #         end
+    #     end
+    # end
+    @tasks for kj = eachindex(1:nky), ki = eachindex(1:nkx)
+        local kx = kxmatg[ki, kj]
+        local ky = kymatg[ki, kj]
+        local ω = ωmatg[ki, kj]
+        local an = ampg_newwave_norm[ki, kj]
+        for yi = eachindex(yvec), xi = eachindex(xvec)
+            local x = xvec[xi]
+            local y = yvec[yi]
+            local phasei = kx * x + ky * y - ω * t + deg2rad(oi.ϕ)
+            local etacomp = an * cos(phasei)
+            η[xi, yi] += etacomp
         end
     end
     return η
