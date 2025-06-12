@@ -191,11 +191,9 @@ function calc_eta(oi, kxmatg, kymatg, ωmatg, t, ampg_newwave_norm)
             for yi = eachindex(yvec), xi = eachindex(xvec)
                 local x = xvec[xi]
                 local y = yvec[yi]
-                local phasei = kx * x + ky * y - ω * t + oi.ϕ
+                local phasei = kx * x + ky * y - ω * t + deg2rad(oi.ϕ)
                 local etacomp = an * cos(phasei)
-                # if !isnan(etacomp)
                 η[xi, yi] += etacomp
-                # end
             end
         end
     end
@@ -211,7 +209,7 @@ function calc_eta(oi, kxmatg, kymatg, ωmatg, t_vec, ampg_newwave_norm, x::Float
             ky = kymatg[ki, kj]
             ω = ωmatg[ki, kj]
             an = ampg_newwave_norm[ki, kj]
-            phasei = kx * x + ky * y - ω * t + oi.ϕ
+            phasei = kx * x + ky * y - ω * t + deg2rad(oi.ϕ)
             etacomp = an * cos(phasei)
             η[i] += etacomp
         end
@@ -238,7 +236,7 @@ function calc_phi(oi, kxmatg, kymatg, ωmatg, t, ampg_newwave_norm, η)
                 for yi in eachindex(yvec)
                     local x = xvec[xi]
                     local y = yvec[yi]
-                    local phasei = kx * x + ky * y - ω * t + oi.ϕ
+                    local phasei = kx * x + ky * y - ω * t + deg2rad(oi.ϕ)
                     local phicomp = (an / (ω + 0.000000001)) * g * ((cosh(k * (η[xi, yi] + oi.depth)) / cosh(k * oi.depth)) * sin(phasei))
                     @views(ϕ[xi, yi] += phicomp)
                 end
