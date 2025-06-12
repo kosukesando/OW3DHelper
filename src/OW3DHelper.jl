@@ -182,7 +182,7 @@ function calc_eta(oi, kxmatg, kymatg, ωmatg, t, ampg_newwave_norm)
     yvec = oi.dy * (-(oi.ny - 1)/2:1:(oi.ny-1)/2)
     # Calculate linear free surface
     println("Calculating linear free surface")
-    Threads.@threads for kj = eachindex(1:nky)
+    for kj = eachindex(1:nky)
         for ki = eachindex(1:nkx)
             local kx = kxmatg[ki, kj]
             local ky = kymatg[ki, kj]
@@ -224,7 +224,7 @@ function calc_phi(oi, kxmatg, kymatg, ωmatg, t, ampg_newwave_norm, η)
     yvec = oi.dy * (-(oi.ny - 1)/2:1:(oi.ny-1)/2)
     ϕ = zeros(oi.nx, oi.ny)
     println("Calculating velocity potential at free surface")
-    Threads.@threads for kj = eachindex(1:nky)
+    for kj = eachindex(1:nky)
         for ki = eachindex(1:nkx)
             # for kj in eachindex(1:nky)
             local kx = kxmatg[ki, kj]
