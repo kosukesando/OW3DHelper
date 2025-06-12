@@ -1,9 +1,11 @@
 module OW3DHelper
 # using SpecialFunctions
 using Printf
+using OhMyThreads: @tasks
 
 export
     OW3DInput,
+    EPFile,
     calc_etaphi,
     JSpec,
     KinematicSetting,
@@ -55,6 +57,15 @@ struct KinematicSetting
     tbeg::Int
     tend::Int
     tstride::Int
+end
+
+struct EPFile
+    nx::Int
+    ny::Int
+    x::Array{Float64}
+    y::Array{Float64}
+    η::Matrix{Float64}
+    ϕ::Matrix{Float64}
 end
 
 function mcallister_mwd(foverfp::Float64, skewd::Float64)
@@ -182,7 +193,7 @@ function calc_eta(oi, kxmatg, kymatg, ωmatg, t, ampg_newwave_norm)
     yvec = oi.dy * (-(oi.ny - 1)/2:1:(oi.ny-1)/2)
     # Calculate linear free surface
     println("Calculating linear free surface")
-    Threads.@threads for kj = eachindex(1:nky)
+    @tasks for kj = eachindex(1:nky)
         for ki = eachindex(1:nkx)
             local kx = kxmatg[ki, kj]
             local ky = kymatg[ki, kj]
@@ -224,7 +235,7 @@ function calc_phi(oi, kxmatg, kymatg, ωmatg, t, ampg_newwave_norm, η)
     yvec = oi.dy * (-(oi.ny - 1)/2:1:(oi.ny-1)/2)
     ϕ = zeros(oi.nx, oi.ny)
     println("Calculating velocity potential at free surface")
-    Threads.@threads for kj = eachindex(1:nky)
+    @tasks for kj = eachindex(1:nky)
         for ki = eachindex(1:nkx)
             # for kj in eachindex(1:nky)
             local kx = kxmatg[ki, kj]
@@ -382,7 +393,9 @@ function open_EP(fpath)
     read!(io_ep, E)
     read!(io_ep, P)
     close(io_ep)
-    Nx, Ny, X, Y, E, P
+    E = reshape(E, Nx, Ny)[2:end-1, 2:end-1]
+    P = reshape(P, Nx, Ny)[2:end-1, 2:end-1]
+    EPFile(Nx - 2, Ny - 2, reshape(X, Nx, Ny)[2:end-1, 2:end-1], reshape(Y, Nx, Ny)[2:end-1, 2:end-1], E, P)
 end
 
 end
