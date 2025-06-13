@@ -198,10 +198,10 @@ function calc_eta(oi, kxmatg, kymatg, ωmatg, t, ampg_newwave_norm)
     println("Calculating linear free surface(omtt)")
     η = @tasks for kij = eachindex(1:nky*nkx)
         @set reducer = .+
-        @local ki = 1 + (kij - 1) % nky
-        @local kj = 1 + (kij - 1) ÷ nky
+        local ki = 1 + (kij - 1) % nky
+        local kj = 1 + (kij - 1) ÷ nky
         @local η_kj = zeros(oi.nx, oi.ny)
-        @local phasei = kxmatg[ki, kj] .* xmat .+ kymatg[ki, kj] .* ymat .- ωmatg[ki, kj] * t .+ deg2rad(oi.ϕ)
+        local phasei = kxmatg[ki, kj] .* xmat .+ kymatg[ki, kj] .* ymat .- ωmatg[ki, kj] * t .+ deg2rad(oi.ϕ)
         ampg_newwave_norm[ki, kj] .* cos.(phasei)
     end
     return η
