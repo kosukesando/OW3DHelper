@@ -1,7 +1,7 @@
 module OW3DHelper
 # using SpecialFunctions
 using Printf
-using OhMyThreads: @tasks
+using OhMyThreads: @tasks, @local, @set
 
 export
     OW3DInput,
@@ -187,7 +187,7 @@ end
 
 function calc_eta(oi, kxmatg, kymatg, ωmatg, t, ampg_newwave_norm)
     (nkx, nky) = size(ampg_newwave_norm)
-    η = zeros(oi.nx, oi.ny)
+    # η = zeros(oi.nx, oi.ny)
     # Generate full-domain
     xvec = oi.dx * (-(oi.nx - 1)/2:1:(oi.nx-1)/2)
     yvec = oi.dy * (-(oi.ny - 1)/2:1:(oi.ny-1)/2)
@@ -208,19 +208,38 @@ function calc_eta(oi, kxmatg, kymatg, ωmatg, t, ampg_newwave_norm)
     #         end
     #     end
     # end
-    @tasks for kj = eachindex(1:nky), ki = eachindex(1:nkx)
-        local kx = kxmatg[ki, kj]
-        local ky = kymatg[ki, kj]
-        local ω = ωmatg[ki, kj]
-        local an = ampg_newwave_norm[ki, kj]
+    # η = zeros(nkx * nky, oi.nx, oi.ny)
+    # tmapreduce(+,1:nky*nkx) do kij
+    η = @tasks for kij = eachindex(1:nky*nkx)
+        @set reducer = .+
+        local ki = 1 + (kij - 1) % nky
+        local kj = 1 + (kij - 1) ÷ nky
+        # @tasks for kj = eachindex(1:nky), ki = eachindex(1:nkx)
+        # local kx = kxmatg[ki, kj]
+        # local ky = kymatg[ki, kj]
+        # local ω = ωmatg[ki, kj]
+        # local an = ampg_newwave_norm[ki, kj]
+        @local η_kj = zeros(oi.nx, oi.ny)
         for yi = eachindex(yvec), xi = eachindex(xvec)
-            local x = xvec[xi]
-            local y = yvec[yi]
-            local phasei = kx * x + ky * y - ω * t + deg2rad(oi.ϕ)
-            local etacomp = an * cos(phasei)
-            η[xi, yi] += etacomp
+            local phasei = kxmatg[ki, kj] * xvec[xi] + kymatg[ki, kj] * yvec[yi] - ωmatg[ki, kj] * t + deg2rad(oi.ϕ)
+            local etacomp = ampg_newwave_norm[ki, kj] * cos(phasei)
+            η_kj[xi, yi] = etacomp
         end
+        η_kj
     end
+    # @tasks for kj = eachindex(1:nky), ki = eachindex(1:nkx)
+    #     local kx = kxmatg[ki, kj]
+    #     local ky = kymatg[ki, kj]
+    #     local ω = ωmatg[ki, kj]
+    #     local an = ampg_newwave_norm[ki, kj]
+    #     for yi = eachindex(yvec), xi = eachindex(xvec)
+    #         local x = xvec[xi]
+    #         local y = yvec[yi]
+    #         local phasei = kx * x + ky * y - ω * t + deg2rad(oi.ϕ)
+    #         local etacomp = an * cos(phasei)
+    #         η[xi, yi] += etacomp
+    #     end
+    # end
     return η
 end
 
