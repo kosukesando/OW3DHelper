@@ -229,26 +229,17 @@ function calc_phi(oi, kxmatg, kymatg, ωmatg, t, ampg_newwave_norm, η)
     # Generate full-domain
     xvec = oi.dx * (-(oi.nx - 1)/2:1:(oi.nx-1)/2)
     yvec = oi.dy * (-(oi.ny - 1)/2:1:(oi.ny-1)/2)
-    ϕ = zeros(oi.nx, oi.ny)
+    xmat = xvec .* ones(length(yvec))'
+    ymat = yvec' .* ones(length(xvec))
+    kmatg = sqrt.(kxmatg .^ 2 .+ kymatg .^ 2)
     println("Calculating velocity potential at free surface")
-    @tasks for kj = eachindex(1:nky)
-        for ki = eachindex(1:nkx)
-            # for kj in eachindex(1:nky)
-            local kx = kxmatg[ki, kj]
-            local ky = kymatg[ki, kj]
-            local k = sqrt(kx^2 + ky^2)
-            local ω = ωmatg[ki, kj]
-            local an = ampg_newwave_norm[ki, kj]
-            for xi in eachindex(xvec)
-                for yi in eachindex(yvec)
-                    local x = xvec[xi]
-                    local y = yvec[yi]
-                    local phasei = kx * x + ky * y - ω * t + deg2rad(oi.ϕ)
-                    local phicomp = (an / (ω + 0.000000001)) * g * ((cosh(k * (η[xi, yi] + oi.depth)) / cosh(k * oi.depth)) * sin(phasei))
-                    @views(ϕ[xi, yi] += phicomp)
-                end
-            end
-        end
+    ϕ = @tasks for kij = eachindex(1:nky*nkx)
+        @set reducer = .+
+        local ki = 1 + (kij - 1) % nky
+        local kj = 1 + (kij - 1) ÷ nky
+        @local ϕ_kj = zeros(oi.nx, oi.ny)
+        local phasei = kxmatg[ki, kj] .* xmat .+ kymatg[ki, kj] .* ymat .- ωmatg[ki, kj] * t .+ deg2rad(oi.ϕ)
+        (ampg_newwave_norm ./ (ωmatg .+ 0.000000001)) .* g .* ((cosh.(kmatg .* (η .+ oi.depth)) ./ cosh.(kmatg .* oi.depth)) .* sin.(phasei))
     end
     ϕ
 end
