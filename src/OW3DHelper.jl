@@ -183,15 +183,15 @@ function calc_eta(oi, kxmatg, kymatg, ωmatg, t, ampg_newwave_norm)
     # Calculate linear free surface
     println("Calculating linear free surface(serial)")
     for kj = eachindex(1:nky), ki = eachindex(1:nkx)
-        local kx = kxmatg[ki, kj]
-        local ky = kymatg[ki, kj]
-        local ω = ωmatg[ki, kj]
-        local an = ampg_newwave_norm[ki, kj]
+        kx = kxmatg[ki, kj]
+        ky = kymatg[ki, kj]
+        ω = ωmatg[ki, kj]
+        an = ampg_newwave_norm[ki, kj]
         for yi = eachindex(yvec), xi = eachindex(xvec)
-            local x = xvec[xi]
-            local y = yvec[yi]
-            local phasei = kx * x + ky * y - ω * t + deg2rad(oi.ϕ)
-            local etacomp = an * cos(phasei)
+            x = xvec[xi]
+            y = yvec[yi]
+            phasei = kx * x + ky * y - ω * t + deg2rad(oi.ϕ)
+            etacomp = an * cos(phasei)
             η[xi, yi] += etacomp
         end
     end
@@ -222,23 +222,18 @@ function calc_phi(oi, kxmatg, kymatg, ωmatg, t, ampg_newwave_norm, η)
     yvec = oi.dy * (-(oi.ny - 1)/2:1:(oi.ny-1)/2)
     ϕ = zeros(oi.nx, oi.ny)
     println("Calculating velocity potential at free surface")
-    for kj = eachindex(1:nky)
-        for ki = eachindex(1:nkx)
-            # for kj in eachindex(1:nky)
-            local kx = kxmatg[ki, kj]
-            local ky = kymatg[ki, kj]
-            local k = sqrt(kx^2 + ky^2)
-            local ω = ωmatg[ki, kj]
-            local an = ampg_newwave_norm[ki, kj]
-            for xi in eachindex(xvec)
-                for yi in eachindex(yvec)
-                    local x = xvec[xi]
-                    local y = yvec[yi]
-                    local phasei = kx * x + ky * y - ω * t + deg2rad(oi.ϕ)
-                    local phicomp = (an / (ω + 0.000000001)) * g * ((cosh(k * (η[xi, yi] + oi.depth)) / cosh(k * oi.depth)) * sin(phasei))
-                    @views(ϕ[xi, yi] += phicomp)
-                end
-            end
+    for kj = eachindex(1:nky), ki = eachindex(1:nkx)
+        kx = kxmatg[ki, kj]
+        ky = kymatg[ki, kj]
+        k = sqrt(kx^2 + ky^2)
+        ω = ωmatg[ki, kj]
+        an = ampg_newwave_norm[ki, kj]
+        for yi = eachindex(yvec), xi = eachindex(xvec)
+            x = xvec[xi]
+            y = yvec[yi]
+            phasei = kx * x + ky * y - ω * t + deg2rad(oi.ϕ)
+            phicomp = (an / (ω + 0.000000001)) * g * ((cosh(k * (η[xi, yi] + oi.depth)) / cosh(k * oi.depth)) * sin(phasei))
+            @views(ϕ[xi, yi] += phicomp)
         end
     end
     ϕ
