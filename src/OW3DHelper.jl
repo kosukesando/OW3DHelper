@@ -15,7 +15,6 @@ export
     generate_init
 
 const g::Float64 = 9.81
-const branch = "omt"
 
 abstract type AbstractSpecType end
 
@@ -188,7 +187,6 @@ end
 
 function calc_eta(oi, kxmatg, kymatg, ωmatg, t, ampg_newwave_norm)
     (nkx, nky) = size(ampg_newwave_norm)
-    # η = zeros(oi.nx, oi.ny)
     # Generate full-domain
     xvec = oi.dx * (-(oi.nx - 1)/2:1:(oi.nx-1)/2)
     yvec = oi.dy * (-(oi.ny - 1)/2:1:(oi.ny-1)/2)
