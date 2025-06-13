@@ -192,7 +192,7 @@ function calc_eta(oi, kxmatg, kymatg, ωmatg, t, ampg_newwave_norm)
     xvec = oi.dx * (-(oi.nx - 1)/2:1:(oi.nx-1)/2)
     yvec = oi.dy * (-(oi.ny - 1)/2:1:(oi.ny-1)/2)
     # Calculate linear free surface
-    println("Calculating linear free surface")
+    println("Calculating linear free surface(omt)")
     # @tasks for kj = eachindex(1:nky)
     #     for ki = eachindex(1:nkx)
     #         local kx = kxmatg[ki, kj]
@@ -212,8 +212,8 @@ function calc_eta(oi, kxmatg, kymatg, ωmatg, t, ampg_newwave_norm)
     # tmapreduce(+,1:nky*nkx) do kij
     η = @tasks for kij = eachindex(1:nky*nkx)
         @set reducer = .+
-        local ki = 1 + (kij - 1) % nky
-        local kj = 1 + (kij - 1) ÷ nky
+        @local ki = 1 + (kij - 1) % nky
+        @local kj = 1 + (kij - 1) ÷ nky
         # @tasks for kj = eachindex(1:nky), ki = eachindex(1:nkx)
         # local kx = kxmatg[ki, kj]
         # local ky = kymatg[ki, kj]
@@ -221,8 +221,8 @@ function calc_eta(oi, kxmatg, kymatg, ωmatg, t, ampg_newwave_norm)
         # local an = ampg_newwave_norm[ki, kj]
         @local η_kj = zeros(oi.nx, oi.ny)
         for yi = eachindex(yvec), xi = eachindex(xvec)
-            local phasei = kxmatg[ki, kj] * xvec[xi] + kymatg[ki, kj] * yvec[yi] - ωmatg[ki, kj] * t + deg2rad(oi.ϕ)
-            local etacomp = ampg_newwave_norm[ki, kj] * cos(phasei)
+            @local phasei = kxmatg[ki, kj] * xvec[xi] + kymatg[ki, kj] * yvec[yi] - ωmatg[ki, kj] * t + deg2rad(oi.ϕ)
+            @local etacomp = ampg_newwave_norm[ki, kj] * cos(phasei)
             η_kj[xi, yi] = etacomp
         end
         η_kj
