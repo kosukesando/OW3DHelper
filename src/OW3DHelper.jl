@@ -191,21 +191,16 @@ function calc_eta(oi, kxmatg, kymatg, ωmatg, t, ampg_newwave_norm)
     # Generate full-domain
     xvec = oi.dx * (-(oi.nx - 1)/2:1:(oi.nx-1)/2)
     yvec = oi.dy * (-(oi.ny - 1)/2:1:(oi.ny-1)/2)
+    xmat = xvec .* ones(length(yvec))'
+    ymat = yvec' .* ones(length(xvec))
     # Calculate linear free surface
-    println("Calculating linear free surface(omt)")
+    println("Calculating linear free surface(omtt)")
     η = @tasks for kij = eachindex(1:nky*nkx)
         @set reducer = .+
         @local ki = 1 + (kij - 1) % nky
         @local kj = 1 + (kij - 1) ÷ nky
         @local η_kj = zeros(oi.nx, oi.ny)
-        xmat = xvec .* ones(length(yvec))'
-        ymat = yvec' .* ones(length(xvec))
         @local phasei = kxmatg[ki, kj] .* xmat .+ kymatg[ki, kj] .* ymat .- ωmatg[ki, kj] * t .+ deg2rad(oi.ϕ)
-        # for yi = eachindex(yvec), xi = eachindex(xvec)
-        # local phasei = kxmatg[ki, kj] * xvec[xi] + kymatg[ki, kj] * yvec[yi] - ωmatg[ki, kj] * t + deg2rad(oi.ϕ)
-        # local etacomp = ampg_newwave_norm[ki, kj] * cos(phasei)
-        # η_kj[xi, yi] = etacomp
-        # end
         ampg_newwave_norm[ki, kj] .* cos.(phasei)
     end
     return η
