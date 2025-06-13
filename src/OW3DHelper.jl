@@ -239,7 +239,7 @@ function calc_phi(oi, kxmatg, kymatg, ωmatg, t, ampg_newwave_norm, η)
         local kj = 1 + (kij - 1) ÷ nky
         @local ϕ_kj = zeros(oi.nx, oi.ny)
         local phasei = kxmatg[ki, kj] .* xmat .+ kymatg[ki, kj] .* ymat .- ωmatg[ki, kj] * t .+ deg2rad(oi.ϕ)
-        (ampg_newwave_norm ./ (ωmatg .+ 0.000000001)) .* g .* ((cosh.(kmatg .* (η .+ oi.depth)) ./ cosh.(kmatg .* oi.depth)) .* sin.(phasei))
+        (ampg_newwave_norm[ki, kj] ./ (ωmatg[ki, kj] .+ 0.000000001)) .* g .* ((cosh.(kmatg[ki, kj] .* (η .+ oi.depth)) ./ cosh.(kmatg[ki, kj] .* oi.depth)) .* sin.(phasei))
     end
     ϕ
 end
