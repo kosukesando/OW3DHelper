@@ -15,6 +15,7 @@ export
     generate_init
 
 const g::Float64 = 9.81
+const branch = "omt"
 
 abstract type AbstractSpecType end
 
