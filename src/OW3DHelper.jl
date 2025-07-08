@@ -208,18 +208,28 @@ end
 function calc_etaphi_sec(oi::OW3DInput, kxmatg, kymatg, ωmatg, t, ampg_newwave_norm, dirg)
     nx = oi.nx
     ny = oi.ny
-    phase = deg2rad(oi.phase)
-    nkx = nothing
-    nky = nothing
-    kxi = nothing
-    kyi = nothing
+    phase = deg2rad(oi.ϕ)
+    kminx = 2 * pi / (oi.dx * nx)
+    kminy = 2 * pi / (oi.dy * ny)
+    kxi = kminx * (-(nx - 1)/2:1:(nx-1)/2)
+    kyi = kminy * (-(ny - 1)/2:1:(ny-1)/2)
+    # max of kxi converges to pi/oi.dx with nx->inf quite quickly
+    kx = kxi[abs.(kxi).<=oi.kmaxx] # wavenumber components in x-direction
+    ky = kyi[abs.(kyi).<=oi.kmaxy] # wavenumber components in y-direction
+
+    #Note: wave components calculated directly from the power spectrum as a
+    #characterisitc feature of the NewWave formulation but it would usually be
+    #necessary to transform the power spectrum into an amplitude spectrum
+    #before calculating the wave components
+    nkx = length(kx)
+    nky = length(ky)
     depth = oi.depth
     kmatg = sqrt.(kxmatg .^ 2 .+ kymatg .^ 2)
 
-    C22 = zeros(2 * (nx - 1) + 1, 2 * (nx - 1) + 1)
-    V22 = zeros(2 * (nx - 1) + 1, 2 * (nx - 1) + 1)
-    C20 = zeros(2 * (nx - 1) + 1, 2 * (nx - 1) + 1)
-    V20 = zeros(2 * (nx - 1) + 1, 2 * (nx - 1) + 1)
+    C22 = zeros(ComplexF64, 2 * (nx - 1) + 1, 2 * (ny - 1) + 1)
+    V22 = zeros(ComplexF64, 2 * (nx - 1) + 1, 2 * (ny - 1) + 1)
+    C20 = zeros(ComplexF64, 2 * (nx - 1) + 1, 2 * (ny - 1) + 1)
+    V20 = zeros(ComplexF64, 2 * (nx - 1) + 1, 2 * (ny - 1) + 1)
 
     ath = 10^(-6) # amplitude threshold for calculation of second order interactions
 
@@ -229,17 +239,17 @@ function calc_etaphi_sec(oi::OW3DInput, kxmatg, kymatg, ωmatg, t, ampg_newwave_
     maxes = 0
 
     # for q00=1:1:length(iia)
-    for i in 1:nkx
-        for j in 1:nky
+    for i = 1:nkx
+        for j = 1:nky
             if ampg_newwave_norm[i, j] < ath
                 continue
             end
-            e2sx = argmin(abs(kxi .- (kxmatg[i, j] + kxmatg[i, j])))
-            e2sy = argmin(abs(kyi .- (kymatg[i, j] + kymatg[i, j])))
-            iix2s = minimum(abs(kxi .- (kxmatg[i, j] + kxmatg[i, j])))
-            iiy2s = minimum(abs(kyi .- (kymatg[i, j] + kymatg[i, j])))
+            e2sx = minimum(abs.(kxi .- (kxmatg[i, j] + kxmatg[i, j])))
+            e2sy = minimum(abs.(kyi .- (kymatg[i, j] + kymatg[i, j])))
+            iix2s = argmin(abs.(kxi .- (kxmatg[i, j] + kxmatg[i, j])))
+            iiy2s = argmin(abs.(kyi .- (kymatg[i, j] + kymatg[i, j])))
 
-            maxes = max([maxes e2sx e2sy])
+            maxes = maximum([maxes e2sx e2sy])
 
             if maxes > (10^-12)
                 "warning: misassigned component"
@@ -251,8 +261,8 @@ function calc_etaphi_sec(oi::OW3DInput, kxmatg, kymatg, ωmatg, t, ampg_newwave_
             c2s = complex(as2s * cos(p2s), as2s * sin(p2s))
             v2s = complex(av2s * cos(p2s - pi / 2), av2s * sin(p2s - pi / 2))
 
-            C22[iiy2s, iix2s] = C22[iiy2s, iix2s] + c2s
-            V22[iiy2s, iix2s] = V22[iiy2s, iix2s] + v2s
+            C22[iix2s, iiy2s] = C22[iix2s, iiy2s] + c2s
+            V22[iix2s, iiy2s] = V22[iix2s, iiy2s] + v2s
         end
     end
 
@@ -262,12 +272,12 @@ function calc_etaphi_sec(oi::OW3DInput, kxmatg, kymatg, ωmatg, t, ampg_newwave_
 
     maxec = 0
 
-    for ij1 in 1:nkx*nky-1
+    for ij1 = 1:nkx*nky-1
         i1 = 1 + (ij1 - 1) % nky
         j1 = 1 + (ij1 - 1) ÷ nky
         sinh1squared = (sinh(kmatg[i1, j1] * depth))^2
         tanh1 = tanh(kmatg[i1, j1] * depth)
-        for ij2 in ij1+1:nkx*nky
+        for ij2 = ij1+1:nkx*nky
             i2 = 1 + (ij2 - 1) % nky
             j2 = 1 + (ij2 - 1) ÷ nky
             sinh2squared = (sinh(kmatg[i2, j2] * depth))^2
@@ -295,14 +305,14 @@ function calc_etaphi_sec(oi::OW3DInput, kxmatg, kymatg, ωmatg, t, ampg_newwave_
             Bp = Bp0 + Bp1 + Bp2
             Bm = Bp0 + Bm1 + Bm2
 
-            e2px = minimum(abs(kxi .- (kxmatg[i1, j1] + kxmatg[i2, j2])))
-            e2py = minimum(abs(kyi .- (kymatg[i1, j1] + kymatg[i2, j2])))
-            e2mx = minimum(abs(kxi .- (kxmatg[i2, j2] - kxmatg[i1, j1])))
-            e2my = minimum(abs(kyi .- (kymatg[i2, j2] - kymatg[i1, j1])))
-            iix2p = argmin(abs(kxi .- (kxmatg[i1, j1] + kxmatg[i2, j2])))
-            iiy2p = argmin(abs(kyi .- (kymatg[i1, j1] + kymatg[i2, j2])))
-            iix2m = argmin(abs(kxi .- (kxmatg[i2, j2] - kxmatg[i1, j1])))
-            iiy2m = argmin(abs(kyi .- (kymatg[i2, j2] - kymatg[i1, j1])))
+            e2px = minimum(abs.(kxi .- (kxmatg[i1, j1] + kxmatg[i2, j2])))
+            e2py = minimum(abs.(kyi .- (kymatg[i1, j1] + kymatg[i2, j2])))
+            e2mx = minimum(abs.(kxi .- (kxmatg[i2, j2] - kxmatg[i1, j1])))
+            e2my = minimum(abs.(kyi .- (kymatg[i2, j2] - kymatg[i1, j1])))
+            iix2p = argmin(abs.(kxi .- (kxmatg[i1, j1] + kxmatg[i2, j2])))
+            iiy2p = argmin(abs.(kyi .- (kymatg[i1, j1] + kymatg[i2, j2])))
+            iix2m = argmin(abs.(kxi .- (kxmatg[i2, j2] - kxmatg[i1, j1])))
+            iiy2m = argmin(abs.(kyi .- (kymatg[i2, j2] - kymatg[i1, j1])))
 
             maxec = maximum([maxec, e2px, e2py, e2mx, e2my])
 
@@ -320,10 +330,10 @@ function calc_etaphi_sec(oi::OW3DInput, kxmatg, kymatg, ωmatg, t, ampg_newwave_
             c20 = complex(a20 * Bm * cos(p20), a20 * Bm * sin(p20))
             v20 = complex(a20 * Am * cos(p20 - pi / 2), a20 * Am * sin(p20 - pi / 2))
 
-            C22[iiy2p, iix2p] = C22(iiy2p, iix2p) + c22
-            V22[iiy2p, iix2p] = V22(iiy2p, iix2p) + v22
-            C20[iiy2m, iix2m] = C20(iiy2m, iix2m) + c20
-            V20[iiy2m, iix2m] = V20(iiy2m, iix2m) + v20
+            C22[iix2p, iiy2p] = C22[iix2p, iiy2p] + c22
+            V22[iix2p, iiy2p] = V22[iix2p, iiy2p] + v22
+            C20[iix2m, iiy2m] = C20[iix2m, iiy2m] + c20
+            V20[iix2m, iiy2m] = V20[iix2m, iiy2m] + v20
         end
     end
 
