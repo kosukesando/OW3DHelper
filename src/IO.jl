@@ -1,14 +1,6 @@
-module OW3DIO
 
 using Printf
 
-export
-    export_ow3d_init,
-    export_ow3d_inp,
-    open_EP,
-    generate_init
-
-include("./OW3DHelper.jl")
 using .OW3DHelper
 
 function export_ow3d_init(η, ϕ, stime, oi::OW3DInput, dir; include_param=true)
@@ -130,5 +122,4 @@ function open_EP(fpath)
     E = reshape(E, Nx, Ny)[2:end-1, 2:end-1]
     P = reshape(P, Nx, Ny)[2:end-1, 2:end-1]
     EPFile(Nx - 2, Ny - 2, reshape(X, Nx, Ny)[2:end-1, 2:end-1], reshape(Y, Nx, Ny)[2:end-1, 2:end-1], E, P)
-end
 end

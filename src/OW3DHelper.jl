@@ -5,14 +5,20 @@ using Reexport
 using Printf
 using FFTW
 using OhMyThreads: @tasks, @local, @set
-@reexport using OW3DIO
+
+include("./IO.jl")
 
 export
     OW3DInput,
     EPFile,
-    calc_etaphi,
     JSpec,
-    KinematicSetting
+    KinematicSetting,
+    calc_etaphi,
+    # calc_etaphi_sec,
+    export_ow3d_inp,
+    export_ow3d_init,
+    open_EP,
+    generate_init
 
 const g::Float64 = 9.81
 
@@ -176,7 +182,7 @@ function calc_etaphi(oi::OW3DInput, t::Number; order=1)
     if order == 1
         return η, ϕ
     elseif order == 2
-        η₂₂, ϕ₂₂, η₂₀, ϕ₂₀ = calc_sec_etaphi(oi, kxmatg, kymatg, ωmatg, t, ampg_newwave_norm, dirg)
+        η₂₂, ϕ₂₂, η₂₀, ϕ₂₀ = calc_etaphi_sec(oi, kxmatg, kymatg, ωmatg, t, ampg_newwave_norm, dirg)
         return η, ϕ, η₂₂, ϕ₂₂, η₂₀, ϕ₂₀
     end
 end
@@ -251,7 +257,7 @@ function calc_etaphi_origin(oi::OW3DInput, ts::Int, te::Int)
     calc_etaphi(oi, ts, te, 0.0, 0.0)
 end
 
-function calc_sec_etaphi(oi::OW3DInput, kxmatg, kymatg, ωmatg, t, ampg_newwave_norm, dirg)
+function calc_etaphi_sec(oi::OW3DInput, kxmatg, kymatg, ωmatg, t, ampg_newwave_norm, dirg)
     nx = oi.nx
     ny = oi.ny
     phase = deg2rad(oi.phase)
