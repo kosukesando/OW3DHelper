@@ -5,10 +5,21 @@ using Reexport
 using Printf
 using FFTW
 using OhMyThreads: @tasks, @local, @set
+using NCDatasets
+using Statistics: mean
+using Printf
+using DataStructures: OrderedDict
+using DSP
+using Serialization
+using MLStyle
+using CairoMakie
+
 
 include("./Structs.jl")
 include("./Constants.jl")
 include("./IO.jl")
+include("./Post-processing.jl")
+include("./Video.jl")
 
 export
     OW3DInput,
@@ -19,6 +30,13 @@ export
     # calc_etaphi_sec,
     export_ow3d_inp,
     export_ow3d_init,
+    export_nc_ep,
+    export_nc_hilbert,
+    export_nc_4phase,
+    plot_raw2d,
+    plot_raw3d,
+    plot_4p,
+    getEPlist,
     open_EP,
     generate_init
 

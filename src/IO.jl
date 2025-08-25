@@ -1,8 +1,3 @@
-
-using Printf
-
-# using .OW3DHelper
-
 function export_ow3d_init(η, ϕ, stime, oi::OW3DInput, dir; include_param=true)
     println("generating initial file...")
     if include_param
@@ -123,3 +118,30 @@ function open_EP(fpath)
     P = reshape(P, Nx, Ny)[2:end-1, 2:end-1]
     EPFile(Nx - 2, Ny - 2, reshape(X, Nx, Ny)[2:end-1, 2:end-1], reshape(Y, Nx, Ny)[2:end-1, 2:end-1], E, P)
 end
+
+function getEPlist(casename::String, twist::Int, phase::Int; basedir=".")
+    epfiledirs = []
+    for i in 1:5
+        dir = joinpath(basedir, @sprintf("%s/%03ddeg/%03d/%d", casename, twist, phase, i))
+        if isdir(dir)
+            if i == 1
+                append!(epfiledirs, filter(!contains("EP_99999.bin"), filter(contains(r"EP_*"), readdir(realpath(dir), join=true))))
+            else
+                ep_head = joinpath(dir, "EP_00000.bin")
+                if !isfile(ep_head)
+                    break
+                end
+                ep1 = open_EP(epfiledirs[end])
+                ep2 = open_EP(ep_head)
+                if ep1.η == ep2.η
+                    append!(epfiledirs, filter(!contains("EP_00000.bin"), filter(!contains("EP_99999.bin"), filter(contains(r"EP_*"), readdir(realpath(dir), join=true)))))
+                else
+                    append!(epfiledirs, filter(!contains("EP_99999.bin"), filter(contains(r"EP_*"), readdir(realpath(dir), join=true))))
+                end
+            end
+        end
+    end
+    epfiledirs
+end
+
+getEPlist(s; basedir=".") = getEPlist(s.casename, s.twist, s.phase)
