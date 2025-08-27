@@ -159,7 +159,7 @@ function export_nc_4phase(s; basedir=".")
         end
     end
     close(ds)
-    @info @sprintf("Write complete for 4p.nc %s(%ddeg twist, phase=%d)", s.casename, s.twist)
+    @info @sprintf("Write complete for 4p.nc %s(%ddeg twist)", s.casename, s.twist)
 end
 
 
