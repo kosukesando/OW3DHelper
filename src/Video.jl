@@ -29,7 +29,7 @@ function plot_raw2d(s, var; basedir=".", xlim=(-1000, 1000), ylim=(-1000, 1000))
         end
         output = joinpath(dir, @sprintf("video/%s_2d_%03d.mp4", var, s.phase))
         mkpath(dirname(output))
-        command = `ffmpeg -i $(tempdir)/2d_%03d.png -vcodec libx264 -b:v 1600k -pix_fmt yuv420p -y $(output)`
+        command = `ffmpeg -i $(tempdir)/2d_%03d.png -vcodec libwebp -b:v 1600k -pix_fmt yuv420p -y $(output)`
         run(command)
     end
 end
@@ -65,7 +65,7 @@ function plot_raw3d(s, var; basedir=".", xlim=(-1000, 1000), ylim=(-1000, 1000))
         end
         output = joinpath(dir, @sprintf("video/%s_3d_%03d.mp4", var, s.phase))
         mkpath(dirname(output))
-        command = `ffmpeg -i $(tempdir)/3d_%03d.png -vcodec libx264 -b:v 1600k -pix_fmt yuv420p -y $(output)`
+        command = `ffmpeg -i $(tempdir)/3d_%03d.png -vcodec libwebp -b:v 1600k -pix_fmt yuv420p -y $(output)`
         run(command)
     end
 end
@@ -107,7 +107,7 @@ function plot_4p(s, var, combination; basedir=".")
         end
         output = joinpath(dir, "video/4p$combination.mp4")
         mkpath(dirname(output))
-        command = `ffmpeg -i /home/kosuke/ow3d/$(s.casename)/$(@sprintf("%03d",s.twist))deg/harmonics/4p$(combination)_%03d.png -vcodec libx264 -b:v 1600k -pix_fmt yuv420p -y $(output)`
+        command = `ffmpeg -i /home/kosuke/ow3d/$(s.casename)/$(@sprintf("%03d",s.twist))deg/harmonics/4p$(combination)_%03d.png -vcodec libwebp -b:v 1600k -pix_fmt yuv420p -y $(output)`
         run(command)
     end
 end
