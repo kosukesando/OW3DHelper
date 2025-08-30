@@ -162,4 +162,37 @@ function export_nc_4phase(s; basedir=".")
     @info @sprintf("Write complete for 4p.nc %s(%ddeg twist)", s.casename, s.twist)
 end
 
+function export_nc_kinematics(s; basedir=".")
+    fname = joinpath(basedir, @sprintf("%s/%03ddeg/kinematics.nc", s.casename, s.twist))
+    phases = [0, 90, 180, 270]
+    if isfile(fname)
+        @warn "NC file exists!"
+        return
+    end
 
+    ds = NCDataset(fname, "c")
+    defDim(ds, "x", s.nx)
+    defDim(ds, "y", s.ny)
+    defDim(ds, "t", s.N)
+    ds.attrib["casename"] = s.casename
+    ds.attrib["twist"] = s.twist
+    ds.attrib["twist_model"] = s.twist_model
+    defVar(ds, "Lx", s.Lx, (), attrib=OrderedDict("units" => "m",))
+    defVar(ds, "Ly", s.Ly, (), attrib=OrderedDict("units" => "m",))
+    defVar(ds, "dx", s.dx, (), attrib=OrderedDict("units" => "m",))
+    defVar(ds, "dy", s.dy, (), attrib=OrderedDict("units" => "m",))
+    defVar(ds, "dt", s.dt, (), attrib=OrderedDict("units" => "s",))
+    defVar(ds, "amplitude", s.amp, (), attrib=OrderedDict("units" => "m",))
+
+    for i in 1:4
+        η = zeros(s.N, s.nx, s.ny)
+        ϕ = zeros(s.N, s.nx, s.ny)
+        phase_str = @sprintf("%03d", phases[i])
+
+        defVar(ds, "eta$phase_str", η, ("t", "x", "y"), attrib=OrderedDict("units" => "m"))
+        defVar(ds, "phi$phase_str", ϕ, ("t", "x", "y"), attrib=OrderedDict("units" => "m²/s"))
+    end
+
+    close(ds)
+    @info @sprintf("Write complete for kinematics.nc %s(%ddeg twist)", s.casename, s.twist)
+end

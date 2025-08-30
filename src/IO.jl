@@ -100,23 +100,289 @@ function export_ow3d_inp(oi::OW3DInput, nt, kinematics, dir; include_param=true,
 end
 
 function open_EP(fpath)
-    io_ep = open(fpath)
-    seek(io_ep, sizeof(Int32))
-    Nx = read(io_ep, Int32)
-    Ny = read(io_ep, Int32)
-    seek(io_ep, sizeof(Int32) * 5)
+    io = open(fpath)
+    skip(io, sizeof(Int32))
+    Nx = read(io, Int32)
+    Ny = read(io, Int32)
+    skip(io, sizeof(Int32))
     X = Array{Float64}(undef, Nx * Ny)
     Y = Array{Float64}(undef, Nx * Ny)
-    read!(io_ep, X)
-    read!(io_ep, Y)
+    read!(io, X)
+    read!(io, Y)
     E = Array{Float64}(undef, Nx * Ny)
     P = Array{Float64}(undef, Nx * Ny)
-    read!(io_ep, E)
-    read!(io_ep, P)
-    close(io_ep)
+    read!(io, E)
+    read!(io, P)
+    close(io)
     E = reshape(E, Nx, Ny)[2:end-1, 2:end-1]
     P = reshape(P, Nx, Ny)[2:end-1, 2:end-1]
     EPFile(Nx - 2, Ny - 2, reshape(X, Nx, Ny)[2:end-1, 2:end-1], reshape(Y, Nx, Ny)[2:end-1, 2:end-1], E, P)
+end
+
+function open_Kinematics(fpath, hoge)
+    println(hoge)
+    io = open(fpath)
+    # This script reads the unformatted binary kinematics output file from the
+    # OceanWave3D code.  
+    #
+    # Read the data from the file
+    # These read statements must correspond exactly to what appears in the
+    # Fortran subroutine: <top dir>/src/IO/StoreKinematicData.f90
+    #
+    skip(io, sizeof(Int32))
+    xbeg = read(io, Int32) #
+    xend = read(io, Int32) #
+    xstride = read(io, Int32) #
+    ybeg = read(io, Int32) #
+    yend = read(io, Int32) #
+    ystride = read(io, Int32) #
+    tbeg = read(io, Int32) #
+    tend = read(io, Int32) #
+    tstride = read(io, Int32) #
+    dt = read(io, Float64) # Time step size
+    nz = read(io, Int32) #
+    skip(io, 2 * sizeof(Int32))
+    nx = floor(Int, (xend - xbeg) / xstride) + 1
+    ny = floor(Int, (yend - ybeg) / ystride) + 1
+    nt = floor(Int, (tend - tbeg) / tstride) + 1
+    # The x-y grid, the depth and bottom gradients for this slice of data
+    # tmp = Vector{Float64}(undef, max(nz, 5) * nx * ny)
+    tmp = zeros(Float64, 5 * nx * ny)
+    read!(io, tmp)
+    skip(io, 2 * sizeof(Int32))
+    x = reshape(tmp[1:5:5*nx*ny], nx, ny)
+    y = reshape(tmp[2:5:5*nx*ny], nx, ny)
+    h = reshape(tmp[3:5:5*nx*ny], nx, ny)
+    hx = reshape(tmp[4:5:5*nx*ny], nx, ny)
+    hy = reshape(tmp[5:5:5*nx*ny], nx, ny)
+    sigma = zeros(nz)
+    for i = 1:nz
+        sigma[i] = read(io, Float64)
+    end
+    skip(io, 2 * sizeof(Int32))
+    eta = Array{Float64}(undef, nt, nx, ny)
+    read!(io, eta[1, :, :])
+    return eta[1, :, :]
+end
+
+function open_Kinematics(fpath)
+    io = open(fpath)
+    # This script reads the unformatted binary kinematics output file from the
+    # OceanWave3D code.  
+    #
+    # Read the data from the file
+    # These read statements must correspond exactly to what appears in the
+    # Fortran subroutine: <top dir>/src/IO/StoreKinematicData.f90
+    #
+    skip(io, sizeof(Int32))
+    xbeg = read(io, Int32) #
+    xend = read(io, Int32) #
+    xstride = read(io, Int32) #
+    ybeg = read(io, Int32) #
+    yend = read(io, Int32) #
+    ystride = read(io, Int32) #
+    tbeg = read(io, Int32) #
+    tend = read(io, Int32) #
+    tstride = read(io, Int32) #
+    dt = read(io, Float64) # Time step size
+    nz = read(io, Int32) #
+    skip(io, 2 * sizeof(Int32))
+    nx = floor(Int, (xend - xbeg) / xstride) + 1
+    ny = floor(Int, (yend - ybeg) / ystride) + 1
+    nt = floor(Int, (tend - tbeg) / tstride) + 1
+    # The x-y grid, the depth and bottom gradients for this slice of data
+    # tmp = Vector{Float64}(undef, max(nz, 5) * nx * ny)
+    tmp = zeros(Float64, 5 * nx * ny)
+    read!(io, tmp)
+    skip(io, 2 * sizeof(Int32))
+    x = reshape(tmp[1:5:5*nx*ny], nx, ny)
+    y = reshape(tmp[2:5:5*nx*ny], nx, ny)
+    h = reshape(tmp[3:5:5*nx*ny], nx, ny)
+    hx = reshape(tmp[4:5:5*nx*ny], nx, ny)
+    hy = reshape(tmp[5:5:5*nx*ny], nx, ny)
+    sigma = zeros(nz)
+    for i = 1:nz
+        sigma[i] = read(io, Float64)
+    end
+    skip(io, 2 * sizeof(Int32))
+    # Initialize arrays for the solution on this slice
+    #
+    eta = Array{Float64}(undef, nt, nx, ny)
+    etax = Array{Float64}(undef, nt, nx, ny)
+    etay = Array{Float64}(undef, nt, nx, ny)
+    phi = Array{Float64}(undef, nt, nz, nx, ny)
+    w = Array{Float64}(undef, nt, nz, nx, ny)
+    u = Array{Float64}(undef, nt, nz, nx, ny)
+    uz = Array{Float64}(undef, nt, nz, nx, ny)
+    v = Array{Float64}(undef, nt, nz, nx, ny)
+    vz = Array{Float64}(undef, nt, nz, nx, ny)
+    wz = Array{Float64}(undef, nt, nz, nx, ny)
+    t = collect(0:nt-1) * dt * tstride   # The time axis
+    #
+    # Read in the solution variables eta, gradeta, phi, u, v, w, dudz, dvdz.  
+    #
+    for it = 1:nt
+        read!(io, @views eta[it, :, :])
+        skip(io, 2 * sizeof(Int32))
+        read!(io, @views etax[it, :, :])
+        skip(io, 2 * sizeof(Int32))
+        read!(io, @views etay[it, :, :])
+        skip(io, 2 * sizeof(Int32))
+        read!(io, @views phi[it, :, :, :])
+        skip(io, 2 * sizeof(Int32))
+        read!(io, @views u[it, :, :, :])
+        skip(io, 2 * sizeof(Int32))
+        read!(io, @views v[it, :, :, :])
+        skip(io, 2 * sizeof(Int32))
+        read!(io, @views w[it, :, :, :])
+        skip(io, 2 * sizeof(Int32))
+        read!(io, @views wz[it, :, :, :])
+        skip(io, 2 * sizeof(Int32))
+        read!(io, @views uz[it, :, :, :])
+        skip(io, 2 * sizeof(Int32))
+        read!(io, @views vz[it, :, :, :])
+        skip(io, 2 * sizeof(Int32))
+    end
+    @info("Read ", nt, "data points")
+    return KinematicsFile(
+        xbeg,
+        xend,
+        xstride,
+        ybeg,
+        yend,
+        ystride,
+        tbeg,
+        tend,
+        tstride,
+        dt,
+        nz,
+        nx,
+        ny,
+        nt,
+        sigma,
+        t,
+        x,
+        y,
+        h,
+        hx,
+        hy,
+        eta,
+        etax,
+        etay,
+        phi,
+        u,
+        uz,
+        v,
+        vz,
+        w,
+        wz,
+    )
+end
+
+function calc_pressure(kf::KinematicsFile)
+    nx = kf.nx
+    ny = kf.ny
+    nz = kf.nz
+    nt = kf.ny
+    dt = kf.dt
+    sigma = kf.sigma
+    eta = kf.eta
+    phi = kf.phi
+    u = kf.u
+    uz = kf.uz
+    function BuildStencilEven(alpha, der)
+        #
+        # A function to compute finite-difference coefficients for the der^th 
+        # derivative of a function on an evenly spaced grid.  2 alpha+1 sets of 
+        # coefficients are returned where set 1,2,...,alpha are one-sided schemes 
+        # at the left end, alpha+1 is the centered scheme, and alpha+2,...,rank 
+        # are the one-sided schemes at the right end.  
+        # 
+        rank = 2 * alpha + 1
+        # One-sided schemes for the left end-points.  
+        mat = zeros()
+        fx = zeros()
+        for ip = 1:alpha
+            for m = -ip+1:rank-ip
+                for n = 1:rank
+                    mat[m+ip, n] = (m)^(n - 1) / factorial(n - 1)
+                end
+            end
+            minv = inv(mat)
+            fx[1:rank, ip] = minv(der + 1, 1:rank)'
+        end
+        # The centered scheme
+        for m = -alpha:alpha
+            for n = 1:rank
+                mat[m+alpha+1, n] = (m)^(n - 1) / factorial(n - 1)
+            end
+        end
+        minv = inv(mat)
+        fx[1:rank, alpha+1] = minv(der + 1, 1:rank)'
+        # Reflect the one-sided schemes from the left end.
+        if mod(der, 2) == 0
+            for ip = 1:alpha
+                fx[1:rank, rank-ip+1] = reverse(fx[1:rank, ip], dims=1)
+            end
+        else
+            for ip = 1:alpha
+                fx[1:rank, rank-ip+1] = -reverse(fx[1:rank, ip], dims=1)
+            end
+        end
+    end
+    if calc_pressure
+        #
+        # Compute the pressure and acceleration from the standard output
+        # kinematics.  This is only done along the first slice in y for 3D
+        # problems.
+        #
+        # Build the 4th-order even grid time differentiation matrix
+        #
+        alpha = 2
+        r = 2 * alpha + 1
+        c = BuildStencilEven(alpha, 1)
+        Dt = spdiagm([ones(nt, 1) * c[:, alpha+1]'], [-alpha:alpha], nt, nt)
+        for j = 1:alpha
+            Dt[j, :] = 0
+            Dt[j, 1:r] = c[:, j]'
+            Dt[nt-j+1, :] = 0
+            Dt[nt-j+1, nt-r+1:nt] = c[:, r-j+1]'
+        end
+        Dt = Dt / dt
+        #
+        # Compute time-derivatives of eta, phi, and u and eta_tt
+        #
+        # ip=input("x point index to work with?");
+        etat_m = Array{Float64}(undef, nt, nx, ny)
+        etatt_m = etat_m
+        phit_m = Array{Float64}(undef, nt, nz, nx, ny)
+        p_m = phit_m
+        ut_m = p_m
+        for idy = 1:ny
+            etat = Array{Float64}(undef, nt, nx)
+            etatt = etat
+            phit = Array{Float64}(undef, nt, nz, nx)
+            p = phit
+            ut = p
+            ut1 = p
+            for ip = 1:nx
+                etat[:, ip] = Dt * eta[:, ip]
+                etatt[:, ip] = Dt * etat[:, ip]
+                #
+                for j = 1:nz
+                    phit[:, j, ip] = Dt * phi[:, j, ip] - w[:, j, ip] .* sigma[j] .* etat[:, ip]
+                    p[:, j, ip] = -(phit[:, j, ip] + 1 / 2 * (u[:, j, ip] .^ 2 + w[:, j, ip] .^ 2))
+                    ut[:, j, ip] = Dt * u[:, j, ip] - uz[:, j, ip] .* sigma[j] .* etat[:, ip]
+                    ut1[:, j, ip] = Dt * u[:, j, ip]
+                end
+            end
+            etat_m[:, :, idy] = etat
+            etatt_m[:, :, idy] = etatt
+            phit_m[:, :, :, idy] = phit
+            p_m[:, :, :, idy] = p
+            ut_m[:, :, :, idy] = ut
+        end
+    end
 end
 
 function getEPlist(casename::String, twist::Int, phase::Int; basedir=".")
