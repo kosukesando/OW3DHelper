@@ -14,6 +14,7 @@ OhMyThreads = "67456a42-1dca-4109-a031-0a68de7e3ad5"
 Printf = "de0858da-6303-5e67-8744-51eddeeeb8d7"
 Reexport = "189a3867-3050-52da-a836-e630ba90ab69"
 Serialization = "9e88b42a-f829-5b0c-bbe9-9e923198166b"
+SparseArrays = "2f01184e-e22b-5df5-ae63-d93ebab69eaf"
 Statistics = "10745b16-79ce-11e8-11f9-7d13ad32a3b2"
 
 [compat]
@@ -27,6 +28,7 @@ OhMyThreads = "0.8.3"
 Printf = "1.11.0"
 Reexport = "1.2.2"
 Serialization = "1.11.0"
+SparseArrays = "1.11.0"
 Statistics = "1.11.1"
 julia = "1.6.7"
 

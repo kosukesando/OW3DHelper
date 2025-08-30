@@ -13,6 +13,7 @@ using DSP
 using Serialization
 using MLStyle
 using CairoMakie
+using SparseArrays
 
 
 include("./Structs.jl")
@@ -38,6 +39,7 @@ export
     plot_4p,
     getEPlist,
     open_EP,
+    open_Kinematics,
     generate_init
 
 function mcallister_mwd(foverfp::Float64, skewd::Float64)
