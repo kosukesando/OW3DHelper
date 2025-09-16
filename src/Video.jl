@@ -77,7 +77,7 @@ function plot_4p(s, var, combination; basedir=".")
     dir = @sprintf("%s/%03ddeg", s.casename, s.twist)
     mktempdir() do tempdir
         Threads.@threads for i in 1:s.N
-            local fname = joinpath(tempdir, @sprintf("%03d.png", combination, i))
+            local fname = joinpath(tempdir, @sprintf("%03d.png", i))
             local fp = NCDataset(joinpath(dir, "4p.nc"))[@sprintf("%s%d", var, combination)][i, :, :]
             local f = Figure(size=(11cm, 8cm), fontsize=12pt)
             local ax = Axis3(f[1, 1],
