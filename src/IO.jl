@@ -119,52 +119,6 @@ function open_EP(fpath)
     EPFile(Nx - 2, Ny - 2, reshape(X, Nx, Ny)[2:end-1, 2:end-1], reshape(Y, Nx, Ny)[2:end-1, 2:end-1], E, P)
 end
 
-function open_Kinematics(fpath, hoge)
-    println(hoge)
-    io = open(fpath)
-    # This script reads the unformatted binary kinematics output file from the
-    # OceanWave3D code.  
-    #
-    # Read the data from the file
-    # These read statements must correspond exactly to what appears in the
-    # Fortran subroutine: <top dir>/src/IO/StoreKinematicData.f90
-    #
-    skip(io, sizeof(Int32))
-    xbeg = read(io, Int32) #
-    xend = read(io, Int32) #
-    xstride = read(io, Int32) #
-    ybeg = read(io, Int32) #
-    yend = read(io, Int32) #
-    ystride = read(io, Int32) #
-    tbeg = read(io, Int32) #
-    tend = read(io, Int32) #
-    tstride = read(io, Int32) #
-    dt = read(io, Float64) # Time step size
-    nz = read(io, Int32) #
-    skip(io, 2 * sizeof(Int32))
-    nx = floor(Int, (xend - xbeg) / xstride) + 1
-    ny = floor(Int, (yend - ybeg) / ystride) + 1
-    nt = floor(Int, (tend - tbeg) / tstride) + 1
-    # The x-y grid, the depth and bottom gradients for this slice of data
-    # tmp = Vector{Float64}(undef, max(nz, 5) * nx * ny)
-    tmp = zeros(Float64, 5 * nx * ny)
-    read!(io, tmp)
-    skip(io, 2 * sizeof(Int32))
-    x = reshape(tmp[1:5:5*nx*ny], nx, ny)
-    y = reshape(tmp[2:5:5*nx*ny], nx, ny)
-    h = reshape(tmp[3:5:5*nx*ny], nx, ny)
-    hx = reshape(tmp[4:5:5*nx*ny], nx, ny)
-    hy = reshape(tmp[5:5:5*nx*ny], nx, ny)
-    sigma = zeros(nz)
-    for i = 1:nz
-        sigma[i] = read(io, Float64)
-    end
-    skip(io, 2 * sizeof(Int32))
-    eta = Array{Float64}(undef, nt, nx, ny)
-    read!(io, eta[1, :, :])
-    return eta[1, :, :]
-end
-
 function open_Kinematics(fpath)
     io = open(fpath)
     # This script reads the unformatted binary kinematics output file from the
