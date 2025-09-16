@@ -3,7 +3,7 @@ function plot_raw2d(s, var; basedir=".", xlim=(-1000, 1000), ylim=(-1000, 1000))
     dir = joinpath(basedir, @sprintf("%s/%03ddeg", s.casename, s.twist))
     mktempdir() do tempdir
         Threads.@threads for i in 1:s.N
-            local fname = joinpath(tempdir, @sprintf("2d_%03d.png", i))
+            local fname = joinpath(tempdir, @sprintf("%03d.png", i))
             local v = NCDataset(joinpath(dir, "ep.nc"))[@sprintf("%s%03d", var, s.phase)][i, :, :]
             local f = Figure(size=(11cm, 8cm), fontsize=12pt)
             local ax = Axis(
@@ -37,7 +37,7 @@ function plot_raw3d(s, var; basedir=".", xlim=(-1000, 1000), ylim=(-1000, 1000))
     dir = joinpath(basedir, @sprintf("%s/%03ddeg", s.casename, s.twist))
     mktempdir() do tempdir
         Threads.@threads for i in 1:s.N
-            local fname = joinpath(tempdir, @sprintf("3d_%03d.png", i))
+            local fname = joinpath(tempdir, @sprintf("%03d.png", i))
             local v = NCDataset(joinpath(dir, "ep.nc"))[@sprintf("%s%03d", var, s.phase)][i, :, :]
             local f = Figure(size=(11cm, 8cm), fontsize=12pt)
             local ax = Axis3(f[1, 1],
@@ -77,7 +77,7 @@ function plot_4p(s, var, combination; basedir=".")
     dir = @sprintf("%s/%03ddeg", s.casename, s.twist)
     mktempdir() do tempdir
         Threads.@threads for i in 1:s.N
-            local fname = joinpath(tempdir, @sprintf("4p%d_%03d.png", combination, i))
+            local fname = joinpath(tempdir, @sprintf("%03d.png", combination, i))
             local fp = NCDataset(joinpath(dir, "4p.nc"))[@sprintf("%s%d", var, combination)][i, :, :]
             local f = Figure(size=(11cm, 8cm), fontsize=12pt)
             local ax = Axis3(f[1, 1],
