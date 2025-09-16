@@ -171,9 +171,6 @@ function export_nc_kinematics(s; basedir=".")
     end
 
     ds = NCDataset(fname, "c")
-    defDim(ds, "x", s.nx)
-    defDim(ds, "y", s.ny)
-    defDim(ds, "t", s.N)
     ds.attrib["casename"] = s.casename
     ds.attrib["twist"] = s.twist
     ds.attrib["twist_model"] = s.twist_model
@@ -185,12 +182,23 @@ function export_nc_kinematics(s; basedir=".")
     defVar(ds, "amplitude", s.amp, (), attrib=OrderedDict("units" => "m",))
 
     for i in 1:4
-        η = zeros(s.N, s.nx, s.ny)
-        ϕ = zeros(s.N, s.nx, s.ny)
         phase_str = @sprintf("%03d", phases[i])
-
-        defVar(ds, "eta$phase_str", η, ("t", "x", "y"), attrib=OrderedDict("units" => "m"))
-        defVar(ds, "phi$phase_str", ϕ, ("t", "x", "y"), attrib=OrderedDict("units" => "m²/s"))
+        kf_path = joinpath(basedir, @sprintf("%s/%03ddeg/%s/1/Kinematics01.bin", s.casename, s.twist, phase_str))
+        kf::KinematicsFile = open_Kinematics(kf_path)
+        if i == 1
+            defDim(ds, "x", kf.nx)
+            defDim(ds, "y", kf.ny)
+            defDim(ds, "z", kf.nz - 1)
+            defDim(ds, "t", kf.nt)
+        end
+        defVar(ds, "eta$phase_str", kf.eta, ("t", "x", "y"), attrib=OrderedDict("units" => "m"))
+        defVar(ds, "phi$phase_str", kf.phi, ("t", "x", "y"), attrib=OrderedDict("units" => "m²/s"))
+        defVar(ds, "u$phase_str", kf.u[:, 2:end, :, :], ("t", "z", "x", "y"), attrib=OrderedDict("units" => "m/s"))
+        defVar(ds, "v$phase_str", kf.v[:, 2:end, :, :], ("t", "z", "x", "y"), attrib=OrderedDict("units" => "m/s"))
+        defVar(ds, "w$phase_str", kf.w[:, 2:end, :, :], ("t", "z", "x", "y"), attrib=OrderedDict("units" => "m/s"))
+        defVar(ds, "uz$phase_str", kf.uz[:, 2:end, :, :], ("t", "z", "x", "y"), attrib=OrderedDict("units" => "m/s"))
+        defVar(ds, "vz$phase_str", kf.vz[:, 2:end, :, :], ("t", "z", "x", "y"), attrib=OrderedDict("units" => "m/s"))
+        defVar(ds, "wz$phase_str", kf.wz[:, 2:end, :, :], ("t", "z", "x", "y"), attrib=OrderedDict("units" => "m/s"))
     end
 
     close(ds)
