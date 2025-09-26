@@ -34,6 +34,7 @@ export
     export_nc_ep,
     export_nc_hilbert,
     export_nc_4phase,
+    export_nc_kinematics,
     plot_raw2d,
     plot_raw3d,
     plot_4p,
