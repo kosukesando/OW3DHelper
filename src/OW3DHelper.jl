@@ -101,12 +101,12 @@ function calc_k_omega_a(oi)
         sj[fmatg.>fm] .= 0.09
 
         #JONSWAP spectrum based on wavenumber
-        kd = oi.k0 * oi.depth
-        D = (g^2) * ((2 * pi)^(-6)) * (0.5 * g) * (tanh(kd) + kd * ((sech(kd))^2))
+        kd = kmatg * oi.depth
+        D = (g^2) * ((2 * pi)^(-6)) * (0.5 * g) * (tanh.(kd) .+ kd .* ((sech.(kd)) .^ 2))
         h1 = fmatg .^ (-6) #differs from frequency version due to Jacobian
         h2 = exp.((-5 / 4) * ((fmatg / fm) .^ (-4))) #exponential function
         h3 = oi.spec.γ .^ (exp.(-0.5 * ((((fmatg / fm) .- 1) ./ (sj)) .^ 2))) #peak enhancement
-        Spec = D * h1 .* h2 .* h3
+        Spec = D .* h1 .* h2 .* h3
         # Ignore "alpha" coefficient since this is a scaling parameter
         # Distribution valid for S(ω) & S(f) since scaled with normalisation
 
