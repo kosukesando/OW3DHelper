@@ -53,6 +53,10 @@ function export_nc_hilbert(s; basedir=".")
     phases = [0, 90, 180, 270]
     dir = joinpath(basedir, @sprintf("%s/%03ddeg", s.casename, s.twist))
     fname = joinpath(dir, "hilbert.nc")
+    if isfile(fname)
+        @warn "hilbert.nc already exists!"
+        return
+    end
     mktemp() do path, io
         ds = NCDataset(path, "c")
         defDim(ds, "x", s.nx)
@@ -126,6 +130,10 @@ function export_nc_4phase(s; basedir=".")
     ds_eph = NCDataset(fh_input)
 
     fname = joinpath(dir, "4p.nc")
+    if isfile(fname)
+        @warn "4p.nc already exists!"
+        return
+    end
     mktemp() do path, io
         ds = NCDataset(path, "c")
         defVar(ds, "dt", s.dt, (), attrib=OrderedDict("units" => "s",))
