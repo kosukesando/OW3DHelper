@@ -208,6 +208,9 @@ function export_nc_kinematics(s; basedir=".")
                 defDim(ds, "y", kf.ny)
                 defDim(ds, "z", kf.nz - 1)
                 defDim(ds, "t", kf.nt)
+                defVar(ds, "x", kf.x[:, 1], ("x",), attrib=OrderedDict("units" => "m"))
+                defVar(ds, "y", kf.y[1, :], ("y",), attrib=OrderedDict("units" => "m"))
+                defVar(ds, "t", kf.t, ("t",), attrib=OrderedDict("units" => "s"))
             end
             defVar(ds, "eta$phase_str", kf.eta, ("t", "x", "y"), attrib=OrderedDict("units" => "m"))
             defVar(ds, "phi$phase_str", kf.phi[:, 2:end, :, :], ("t", "z", "x", "y"), attrib=OrderedDict("units" => "m²/s"))
@@ -223,4 +226,25 @@ function export_nc_kinematics(s; basedir=".")
         mv(path, fname)
         @info @sprintf("Write complete for kinematics.nc %s(%ddeg twist)", s.casename, s.twist)
     end
+end
+
+function interp_vel(vel, zs, xgrid, ygrid, zgrid)
+    @assert length(size(vel)) == 3
+    (nz, nx, ny) = size(vel)
+    vels = zeros(length(zgrid), length(xgrid), length(ygrid))
+    for xi = 1:nx, yi = 1:ny
+        itp_vel = extrapolate(interpolate(zs[:, xi, yi], vel[:, xi, yi], FritschCarlsonMonotonicInterpolation()), NaN)
+        vels[:, xi, yi] = itp_vel.(zgrid)
+    end
+    vels
+end
+
+function calc_zs(eta, nz, depth)
+    sigma = sin.(π * ((0:nz-1) ./ (2 * (nz - 1))))
+    zs = zeros((nz, size(eta)...))
+    for (ind, e) in pairs(eta)
+        e = eta[ind]
+        zs[:, ind] = (depth + e) .* sigma
+    end
+    zs
 end

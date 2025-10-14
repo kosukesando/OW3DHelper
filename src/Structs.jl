@@ -51,6 +51,25 @@ struct EPFile
 end
 
 struct KinematicsFile
+    dt::Float64
+    nz::Int
+    nx::Int
+    ny::Int
+    nt::Int
+    t::Vector{Float64}
+    x::Array{Float64}
+    y::Array{Float64}
+    eta::Array{Float64}
+    phi::Array{Float64}
+    u::Array{Float64}
+    uz::Array{Float64}
+    v::Array{Float64}
+    vz::Array{Float64}
+    w::Array{Float64}
+    wz::Array{Float64}
+end
+
+struct KinematicsFileFull
     xbeg::Int
     xend::Int
     xstride::Int

@@ -14,6 +14,7 @@ using Serialization
 using MLStyle
 using CairoMakie
 using SparseArrays
+using Interpolations
 
 
 include("./Structs.jl")
@@ -25,6 +26,7 @@ include("./Video.jl")
 export
     OW3DInput,
     EPFile,
+    KinematicsFile,
     JSpec,
     KinematicSetting,
     calc_etaphi,
@@ -41,7 +43,9 @@ export
     getEPlist,
     open_EP,
     open_Kinematics,
-    generate_init
+    generate_init,
+    calc_zs,
+    interp_vel
 
 function mcallister_mwd(foverfp::Float64, skewd::Float64)
     # Based on parameterisation in McAllister(2019)

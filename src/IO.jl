@@ -119,7 +119,7 @@ function open_EP(fpath)
     EPFile(Nx - 2, Ny - 2, reshape(X, Nx, Ny)[2:end-1, 2:end-1], reshape(Y, Nx, Ny)[2:end-1, 2:end-1], E, P)
 end
 
-function open_Kinematics(fpath)
+function open_Kinematics(fpath; GhostZ=false)
     io = open(fpath)
     # This script reads the unformatted binary kinematics output file from the
     # OceanWave3D code.  
@@ -139,7 +139,7 @@ function open_Kinematics(fpath)
     tend = read(io, Int32) #
     tstride = read(io, Int32) #
     dt = read(io, Float64) # Time step size
-    nz = read(io, Int32) #
+    nz = read(io, Int32)#
     skip(io, 2 * sizeof(Int32))
     nx = floor(Int, (xend - xbeg) / xstride) + 1
     ny = floor(Int, (yend - ybeg) / ystride) + 1
@@ -198,38 +198,56 @@ function open_Kinematics(fpath)
         skip(io, 2 * sizeof(Int32))
     end
     @info("Read ", nt, "data points")
+    # return KinematicsFileFull(
+    #     xbeg,
+    #     xend,
+    #     xstride,
+    #     ybeg,
+    #     yend,
+    #     ystride,
+    #     tbeg,
+    #     tend,
+    #     tstride,
+    #     dt,
+    #     nz,
+    #     nx,
+    #     ny,
+    #     nt,
+    #     sigma,
+    #     t,
+    #     x,
+    #     y,
+    #     h,
+    #     hx,
+    #     hy,
+    #     eta,
+    #     etax,
+    #     etay,
+    #     phi,
+    #     u,
+    #     uz,
+    #     v,
+    #     vz,
+    #     w,
+    #     wz,
+    # )
     return KinematicsFile(
-        xbeg,
-        xend,
-        xstride,
-        ybeg,
-        yend,
-        ystride,
-        tbeg,
-        tend,
-        tstride,
         dt,
-        nz,
+        nz - (GhostZ ? 0 : 1),
         nx,
         ny,
         nt,
-        sigma,
         t,
         x,
         y,
-        h,
-        hx,
-        hy,
         eta,
-        etax,
-        etay,
-        phi,
-        u,
-        uz,
-        v,
-        vz,
-        w,
-        wz,
+        (GhostZ ? phi : phi[:, 2:end, :, :]),
+        (GhostZ ? u : u[:, 2:end, :, :]),
+        (GhostZ ? uz : uz[:, 2:end, :, :]),
+        (GhostZ ? v : v[:, 2:end, :, :]),
+        (GhostZ ? vz : vz[:, 2:end, :, :]),
+        (GhostZ ? w : w[:, 2:end, :, :]),
+        (GhostZ ? wz : wz[:, 2:end, :, :]),
     )
 end
 
