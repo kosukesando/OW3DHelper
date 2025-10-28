@@ -47,12 +47,13 @@ export
     calc_zs,
     interp_vel
 
-function mcallister_mwd(foverfp::Float64, skewd::Float64)
+function mcallister_mwd(foverfp::Float64, skewd::Float64; t=1)
     # Based on parameterisation in McAllister(2019)
-    if foverfp <= 1
+    # Modified to take an arbitrary threshold t as the cutoff point
+    if foverfp <= t
         theta = 0.0
     else
-        theta = (tanh(2 * foverfp - 3.5) / tanh(1.5) + 1) * skewd / 2
+        theta = (tanh(2 * (foverfp - t + 1) - 3.5) / tanh(1.5) + 1) * skewd / 2
     end
     return theta
 end
@@ -125,6 +126,8 @@ function calc_k_omega_a(oi)
 
     if oi.twist_type == "mcallister"
         dirg = dirg + mcallister_mwd.(fmatg / fm, oi.twist_angle) # MWD as a function of freq
+    elseif oi.twist_type == "modmca75"
+        dirg = dirg + mcallister_mwd.(fmatg / fm, oi.twist_angle; t=0.75) # MWD as a function of freq
     end
     dirg = dirg .+ oi.mwd
 
