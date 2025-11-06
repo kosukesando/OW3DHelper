@@ -102,3 +102,19 @@ struct KinematicsFileFull
     w::Array{Float64}
     wz::Array{Float64}
 end
+
+struct PostProcessSetting
+    casename::String
+    amp::Float64
+    phase::Float64
+    twist::Float64
+    twist_model::String
+    nt::Int
+    nx::Int
+    ny::Int
+    dt::Float64
+    dx::Float64
+    dy::Float64
+    Lx::Float64
+    Ly::Float64
+end

@@ -1,8 +1,35 @@
-function export_nc_ep(s; basedir=".", force=false)
+function getEPlist(casename::String, twist::Int, phase::Int; basedir=".")
+    epfiledirs = []
+    for i in 1:5
+        dir = joinpath(basedir, @sprintf("%s/%03ddeg/%03d/%d", casename, twist, phase, i))
+        if isdir(dir)
+            if i == 1
+                append!(epfiledirs, filter(!contains("EP_99999.bin"), filter(contains(r"EP_*"), readdir(realpath(dir), join=true))))
+            else
+                ep_head = joinpath(dir, "EP_00000.bin")
+                if !isfile(ep_head)
+                    break
+                end
+                ep1 = open_EP(epfiledirs[end])
+                ep2 = open_EP(ep_head)
+                if ep1.η == ep2.η
+                    append!(epfiledirs, filter(!contains("EP_00000.bin"), filter(!contains("EP_99999.bin"), filter(contains(r"EP_*"), readdir(realpath(dir), join=true)))))
+                else
+                    append!(epfiledirs, filter(!contains("EP_99999.bin"), filter(contains(r"EP_*"), readdir(realpath(dir), join=true))))
+                end
+            end
+        end
+    end
+    epfiledirs
+end
+
+getEPlist(s::PostProcessSetting; basedir=".") = getEPlist(s.casename, s.twist, s.phase)
+
+function export_nc_ep(s::PostProcessSetting; basedir=".", force=false)
     fname = joinpath(basedir, @sprintf("%s/%03ddeg/ep.nc", s.casename, s.twist))
     phases = [0, 90, 180, 270]
     epl = [getEPlist(s.casename, s.twist, p) for p in phases]
-    if any(length.(epl) .< s.N) && !force
+    if any(length.(epl) .< s.nt) && !force
         @warn "Not enough EP files!"
         return
     end
@@ -15,7 +42,7 @@ function export_nc_ep(s; basedir=".", force=false)
         ds = NCDataset(path, "c")
         defDim(ds, "x", s.nx)
         defDim(ds, "y", s.ny)
-        defDim(ds, "t", s.N)
+        defDim(ds, "t", s.nt)
         ds.attrib["casename"] = s.casename
         ds.attrib["twist"] = s.twist
         ds.attrib["twist_model"] = s.twist_model
@@ -27,9 +54,9 @@ function export_nc_ep(s; basedir=".", force=false)
         defVar(ds, "amplitude", s.amp, (), attrib=OrderedDict("units" => "m",))
 
         for i in 1:4
-            η = zeros(s.N, s.nx, s.ny)
-            ϕ = zeros(s.N, s.nx, s.ny)
-            Threads.@threads for t in 1:s.N
+            η = zeros(s.nt, s.nx, s.ny)
+            ϕ = zeros(s.nt, s.nx, s.ny)
+            Threads.@threads for t in 1:s.nt
                 local ep = open_EP(epl[i][t])
                 @views η[t, :, :] = ep.η
                 @views ϕ[t, :, :] = ep.ϕ
@@ -49,7 +76,7 @@ function export_nc_ep(s; basedir=".", force=false)
     end
 end
 
-function export_nc_hilbert(s; basedir=".")
+function export_nc_hilbert(s::PostProcessSetting; basedir=".")
     phases = [0, 90, 180, 270]
     dir = joinpath(basedir, @sprintf("%s/%03ddeg", s.casename, s.twist))
     fname = joinpath(dir, "hilbert.nc")
@@ -61,7 +88,7 @@ function export_nc_hilbert(s; basedir=".")
         ds = NCDataset(path, "c")
         defDim(ds, "x", s.nx)
         defDim(ds, "y", s.ny)
-        defDim(ds, "t", s.N)
+        defDim(ds, "t", s.nt)
         ds.attrib["title"] = "hilbert transform"
         ds.attrib["casename"] = s.casename
         ds.attrib["twist"] = s.twist
@@ -97,12 +124,12 @@ function export_nc_hilbert(s; basedir=".")
     end
 end
 
-function calc_argmax(s)
+function calc_argmax(s::PostProcessSetting)
     epl = getEPlist(s)
     emax = 0
     emaxloc = nothing
     emaxt = 0
-    for (i, ep) in enumerate(epl[1:s.N])
+    for (i, ep) in enumerate(epl[1:s.nt])
         e = open_EP(ep).η
         if maximum(e) > emax
             emaxloc = argmax(e)
@@ -114,7 +141,7 @@ function calc_argmax(s)
 end
 
 
-function export_nc_4phase(s; basedir=".")
+function export_nc_4phase(s::PostProcessSetting; basedir=".")
     dir = joinpath(basedir, @sprintf("%s/%03ddeg", s.casename, s.twist))
     f_input = joinpath(dir, "ep.nc")
     fh_input = joinpath(dir, "hilbert.nc")
@@ -140,7 +167,7 @@ function export_nc_4phase(s; basedir=".")
         ds.attrib["twist_model"] = s.twist_model
         defDim(ds, "x", s.nx)
         defDim(ds, "y", s.ny)
-        defDim(ds, "t", s.N)
+        defDim(ds, "t", s.nt)
         ds.attrib["title"] = "4 phase decomposition"
         ds.attrib["casename"] = s.casename
         ds.attrib["twist"] = s.twist
@@ -175,11 +202,11 @@ function export_nc_4phase(s; basedir=".")
         end
         close(ds)
         mv(path, fname)
-        @info @sprintf("Write complete for 4p.nc %s(%ddeg twist)", s.casename, s.twist)
+        @info @sprintf("Write complete for 4p.nc %s", s.casename)
     end
 end
 
-function export_nc_kinematics(s; basedir=".")
+function export_nc_kinematics(s::PostProcessSetting; basedir=".")
     fname = joinpath(basedir, @sprintf("%s/%03ddeg/kinematics.nc", s.casename, s.twist))
     phases = [0, 90, 180, 270]
     if isfile(fname)

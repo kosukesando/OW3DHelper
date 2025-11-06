@@ -29,6 +29,7 @@ export
     KinematicsFile,
     JSpec,
     KinematicSetting,
+    PostProcessSetting,
     calc_etaphi,
     # calc_etaphi_sec,
     export_ow3d_inp,

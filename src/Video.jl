@@ -32,11 +32,11 @@ function plot_raw2d(s, var; basedir=".", xlim=(-1000, 1000), ylim=(-1000, 1000))
     end
 end
 
-function plot_raw3d(s, var; basedir=".", xlim=(-1000, 1000), ylim=(-1000, 1000))
+function plot_raw3d(s::PostProcessSetting, var; basedir=".", xlim=(-1000, 1000), ylim=(-1000, 1000))
     @assert var in ["eta", "phi"]
     dir = joinpath(basedir, @sprintf("%s/%03ddeg", s.casename, s.twist))
     mktempdir() do tempdir
-        Threads.@threads for i in 1:s.N
+        Threads.@threads for i in 1:s.nt
             local fname = joinpath(tempdir, @sprintf("%03d.png", i))
             local v = NCDataset(joinpath(dir, "ep.nc"))[@sprintf("%s%03d", var, s.phase)][i, :, :]
             local f = Figure(size=(11cm, 8cm), fontsize=12pt)
