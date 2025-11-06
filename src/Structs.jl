@@ -107,7 +107,7 @@ struct PostProcessSetting
     casename::String
     amp::Float64
     phase::Float64
-    twist::Float64
+    twist::Int
     twist_model::String
     nt::Int
     nx::Int
