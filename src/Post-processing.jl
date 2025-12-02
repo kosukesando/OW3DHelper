@@ -120,7 +120,7 @@ function export_nc_hilbert(s::PostProcessSetting; basedir=".")
         end
         close(ds)
         mv(path, fname)
-        @info @sprintf("Write complete for hilbert.nc: %s(%ddeg twist, phase=%d)", s.casename, s.twist)
+        @info @sprintf("Write complete for hilbert.nc: %s(%ddeg twist, phase=%d)", s.casename, s.twist, s.phase)
     end
 end
 
