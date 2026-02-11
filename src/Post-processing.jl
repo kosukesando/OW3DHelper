@@ -26,7 +26,8 @@ end
 getEPlist(s::PostProcessSetting; basedir=".") = getEPlist(s.casename, s.twist, s.phase)
 
 function export_nc_ep(s::PostProcessSetting; basedir=".", force=false)
-    fname = joinpath(basedir, @sprintf("%s/%03ddeg/ep.nc", s.casename, s.twist))
+    dir = joinpath(basedir, @sprintf("%s/%03ddeg", s.casename, s.twist))
+    fname = joinpath(dir, "ep.nc")
     phases = [0, 90, 180, 270]
     epl = [getEPlist(s.casename, s.twist, p) for p in phases]
     if any(length.(epl) .< s.nt) && !force
@@ -38,7 +39,7 @@ function export_nc_ep(s::PostProcessSetting; basedir=".", force=false)
         return
     end
 
-    mktemp() do path, io
+    mktemp(dir) do path, _
         ds = NCDataset(path, "c")
         defDim(ds, "x", s.nx)
         defDim(ds, "y", s.ny)
@@ -84,7 +85,7 @@ function export_nc_hilbert(s::PostProcessSetting; basedir=".")
         @warn "hilbert.nc already exists!"
         return
     end
-    mktemp() do path, io
+    mktemp(dir) do path, _
         ds = NCDataset(path, "c")
         defDim(ds, "x", s.nx)
         defDim(ds, "y", s.ny)
@@ -161,7 +162,7 @@ function export_nc_4phase(s::PostProcessSetting; basedir=".")
         @warn "4p.nc already exists!"
         return
     end
-    mktemp() do path, io
+    mktemp(dir) do path, _
         ds = NCDataset(path, "c")
         defVar(ds, "dt", s.dt, (), attrib=OrderedDict("units" => "s",))
         ds.attrib["twist_model"] = s.twist_model
@@ -207,14 +208,15 @@ function export_nc_4phase(s::PostProcessSetting; basedir=".")
 end
 
 function export_nc_kinematics(s::PostProcessSetting; basedir=".")
-    fname = joinpath(basedir, @sprintf("%s/%03ddeg/kinematics.nc", s.casename, s.twist))
+    dir = joinpath(basedir, @sprintf("%s/%03ddeg", s.casename, s.twist))
+    fname = joinpath(dir, "kinematics.nc")
     phases = [0, 90, 180, 270]
     if isfile(fname)
         @warn "NC file exists!"
         return
     end
 
-    mktemp() do path, io
+    mktemp(dir) do path, _
         ds = NCDataset(path, "c")
         ds.attrib["casename"] = s.casename
         ds.attrib["twist"] = s.twist
