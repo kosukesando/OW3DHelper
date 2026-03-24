@@ -164,6 +164,21 @@ function calc_etaphi(oi::OW3DInput, t::Number; order=1)
     end
 end
 
+function calc_etaphi_mirror(oi::OW3DInput, t::Number; order=1)
+    kxmatg, kymatg, ωmatg, ampg_newwave_norm, dirg = calc_k_omega_a(oi)
+    η = calc_eta(oi, kxmatg, kymatg, ωmatg, t, ampg_newwave_norm)
+    ϕ = calc_phi(oi, kxmatg, kymatg, ωmatg, t, ampg_newwave_norm, η)
+    if order == 1
+        η_mirror = (reverse(η; dims=1) .+ η) ./ 2
+        ϕ_mirror = (reverse(ϕ; dims=1) .+ ϕ) ./ 2
+        return η_mirror, ϕ_mirror
+    elseif order == 2
+        @warn "Second order interactions not implemented for mirrored initial condition"
+        η₂₂, ϕ₂₂, η₂₀, ϕ₂₀ = calc_etaphi_sec(oi, kxmatg, kymatg, ωmatg, t, ampg_newwave_norm, dirg)
+        return η, ϕ, η₂₂, ϕ₂₂, η₂₀, ϕ₂₀
+    end
+end
+
 function calc_etaphi(oi::OW3DInput, ts::Int, te::Int, x, y)
     kxmatg, kymatg, ωmatg, ampg_newwave_norm, dirg = calc_k_omega_a(oi)
     t = ts:te
