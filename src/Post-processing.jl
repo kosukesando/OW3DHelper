@@ -77,6 +77,18 @@ function export_nc_ep(s::PostProcessSetting; basedir=".", force=false)
     end
 end
 
+function hilbert_reflect(data; num_pad=50)
+    if num_pad > length(data)
+        @error "Padding larger than original array"
+    end
+    data_padded = zeros(length(data) + 2 * num_pad)
+    data_padded[num_pad+1:end-num_pad] = data
+    data_padded[1:num_pad] = data[num_pad+1:-1:1+1]
+    data_padded[end-num_pad+1:end] = data[end-1:-1:end-num_pad+1-1]
+    hilbert_padded = hilbert(data_padded)
+    return hilbert_padded[num_pad+1:end-num_pad]
+end
+
 function export_nc_hilbert(s::PostProcessSetting; basedir=".")
     phases = [0, 90, 180, 270]
     dir = joinpath(basedir, @sprintf("%s/%03ddeg", s.casename, s.twist))
@@ -109,8 +121,8 @@ function export_nc_hilbert(s::PostProcessSetting; basedir=".")
         for i in 1:4
             η = Array(ds_ep[@sprintf("eta%03d", phases[i])])
             ϕ = Array(ds_ep[@sprintf("phi%03d", phases[i])])
-            η_hilbert = imag.(mapslices(hilbert, η; dims=1))
-            ϕ_hilbert = imag.(mapslices(hilbert, ϕ; dims=1))
+            η_hilbert = imag.(mapslices(hilbert_reflect, η; dims=1))
+            ϕ_hilbert = imag.(mapslices(hilbert_reflect, ϕ; dims=1))
 
             defVar(ds, @sprintf("eta%03d", phases[i]), η_hilbert, ("t", "x", "y"), attrib=OrderedDict(
                 "units" => "m",
