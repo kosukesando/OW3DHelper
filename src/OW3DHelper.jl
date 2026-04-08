@@ -170,8 +170,8 @@ function calc_etaphi_mirror(oi::OW3DInput, t::Number; order=1)
     η = calc_eta(oi, kxmatg, kymatg, ωmatg, t, ampg_newwave_norm)
     ϕ = calc_phi(oi, kxmatg, kymatg, ωmatg, t, ampg_newwave_norm, η)
     if order == 1
-        η_mirror = (reverse(η; dims=1) .+ η) ./ 2
-        ϕ_mirror = (reverse(ϕ; dims=1) .+ ϕ) ./ 2
+        η_mirror = (reverse(η; dims=2) .+ η) ./ 2
+        ϕ_mirror = (reverse(ϕ; dims=2) .+ ϕ) ./ 2
         return η_mirror, ϕ_mirror
     elseif order == 2
         @warn "Second order interactions not implemented for mirrored initial condition"
