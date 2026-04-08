@@ -31,6 +31,7 @@ export
     KinematicSetting,
     PostProcessSetting,
     calc_etaphi,
+    calc_etaphi_mirror,
     # calc_etaphi_sec,
     export_ow3d_inp,
     export_ow3d_init,
