@@ -27,6 +27,7 @@ struct OW3DInput{T}
     twist_angle::Float64
     mwd::Float64
     twist_type::String
+    phase_correction::Union{Nothing,Array{Float64}}
 end
 
 struct KinematicSetting

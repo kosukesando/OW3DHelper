@@ -191,6 +191,11 @@ end
 
 function calc_eta(oi, kxmatg, kymatg, ωmatg, t, ampg_newwave_norm)
     (nkx, nky) = size(ampg_newwave_norm)
+    if oi.phase_correction == nothing
+        phase_correction = zeros(nkx, nky)
+    else
+        phase_correction = oi.phase_correction
+    end
     # Generate full-domain
     xvec = oi.dx * (-(oi.nx - 1)/2:1:(oi.nx-1)/2)
     yvec = oi.dy * (-(oi.ny - 1)/2:1:(oi.ny-1)/2)
@@ -203,7 +208,7 @@ function calc_eta(oi, kxmatg, kymatg, ωmatg, t, ampg_newwave_norm)
         local ki = 1 + (kij - 1) % nky
         local kj = 1 + (kij - 1) ÷ nky
         @local η_kj = zeros(oi.nx, oi.ny)
-        local phasei = kxmatg[ki, kj] .* xmat .+ kymatg[ki, kj] .* ymat .- ωmatg[ki, kj] * t .+ deg2rad(oi.ϕ)
+        local phasei = kxmatg[ki, kj] .* xmat .+ kymatg[ki, kj] .* ymat .- ωmatg[ki, kj] * t .+ deg2rad(oi.ϕ) + phase_correction[ki, kj]
         ampg_newwave_norm[ki, kj] .* cos.(phasei)
     end
     return η
@@ -211,6 +216,11 @@ end
 
 function calc_eta(oi, kxmatg, kymatg, ωmatg, t_vec, ampg_newwave_norm, x::Float64, y::Float64)
     (nkx, nky) = size(ampg_newwave_norm)
+    if oi.phase_correction == nothing
+        phase_correction = zeros(nkx, nky)
+    else
+        phase_correction = oi.phase_correction
+    end
     η = zeros(length(t_vec))
     for (i, t) in enumerate(t_vec)
         for kj = eachindex(1:nky), ki = eachindex(1:nkx)
@@ -218,7 +228,7 @@ function calc_eta(oi, kxmatg, kymatg, ωmatg, t_vec, ampg_newwave_norm, x::Float
             ky = kymatg[ki, kj]
             ω = ωmatg[ki, kj]
             an = ampg_newwave_norm[ki, kj]
-            phasei = kx * x + ky * y - ω * t + deg2rad(oi.ϕ)
+            phasei = kx * x + ky * y - ω * t + deg2rad(oi.ϕ) + phase_correction[ki, kj]
             etacomp = an * cos(phasei)
             η[i] += etacomp
         end
@@ -228,6 +238,11 @@ end
 
 function calc_phi(oi, kxmatg, kymatg, ωmatg, t, ampg_newwave_norm, η)
     (nkx, nky) = size(ampg_newwave_norm)
+    if oi.phase_correction == nothing
+        phase_correction = zeros(nkx, nky)
+    else
+        phase_correction = oi.phase_correction
+    end
     # Generate full-domain
     xvec = oi.dx * (-(oi.nx - 1)/2:1:(oi.nx-1)/2)
     yvec = oi.dy * (-(oi.ny - 1)/2:1:(oi.ny-1)/2)
@@ -240,7 +255,7 @@ function calc_phi(oi, kxmatg, kymatg, ωmatg, t, ampg_newwave_norm, η)
         local ki = 1 + (kij - 1) % nky
         local kj = 1 + (kij - 1) ÷ nky
         @local ϕ_kj = zeros(oi.nx, oi.ny)
-        local phasei = kxmatg[ki, kj] .* xmat .+ kymatg[ki, kj] .* ymat .- ωmatg[ki, kj] * t .+ deg2rad(oi.ϕ)
+        local phasei = kxmatg[ki, kj] .* xmat .+ kymatg[ki, kj] .* ymat .- ωmatg[ki, kj] * t .+ deg2rad(oi.ϕ) + phase_correction[ki, kj]
         (ampg_newwave_norm[ki, kj] ./ (ωmatg[ki, kj] .+ 0.000000001)) .* g .* ((cosh.(kmatg[ki, kj] .* (η .+ oi.depth)) ./ cosh.(kmatg[ki, kj] .* oi.depth)) .* sin.(phasei))
     end
     ϕ
