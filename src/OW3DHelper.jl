@@ -195,6 +195,9 @@ function calc_eta(oi, kxmatg, kymatg, ωmatg, t, ampg_newwave_norm)
         phase_correction = zeros(nkx, nky)
     else
         phase_correction = oi.phase_correction
+        if size(phase_correction) != size(ampg_newwave_norm)
+            error("Phase correction array must be the same size as the amplitude array")
+        end
     end
     # Generate full-domain
     xvec = oi.dx * (-(oi.nx - 1)/2:1:(oi.nx-1)/2)
@@ -220,6 +223,9 @@ function calc_eta(oi, kxmatg, kymatg, ωmatg, t_vec, ampg_newwave_norm, x::Float
         phase_correction = zeros(nkx, nky)
     else
         phase_correction = oi.phase_correction
+        if size(phase_correction) != size(ampg_newwave_norm)
+            error("Phase correction array must be the same size as the amplitude array")
+        end
     end
     η = zeros(length(t_vec))
     for (i, t) in enumerate(t_vec)
@@ -242,6 +248,9 @@ function calc_phi(oi, kxmatg, kymatg, ωmatg, t, ampg_newwave_norm, η)
         phase_correction = zeros(nkx, nky)
     else
         phase_correction = oi.phase_correction
+        if size(phase_correction) != size(ampg_newwave_norm)
+            error("Phase correction array must be the same size as the amplitude array")
+        end
     end
     # Generate full-domain
     xvec = oi.dx * (-(oi.nx - 1)/2:1:(oi.nx-1)/2)
