@@ -83,13 +83,9 @@ function calc_k_omega_a(oi)
     dirg = zeros(nkx, nky)
 
     # Generate spectrum. Type J is JONSWAP spectrum
-    fm = 0.0836708928777909 #depth = 200m
+    ωm = sqrt(g * oi.k0 * tanh(oi.k0 * oi.depth)) # dispersion relation TODO: change input to Tp or fp and calculate k0 from that
+    fm = ωm / (2 * pi) # Convert to frequency
     if typeof(oi.spec) == JSpec
-
-        #NOTE: the value of fm is depth dependent!
-        #peak of JONSWAP ensures kp of 0.02796 [m^-1]
-        #fm=0.0787103953986135; #depth = 50m
-
         for i = 1:nkx
             for j = 1:nky
                 kAbs = sqrt((kx[i])^2 + (ky[j])^2) #wavenumber of component
@@ -117,21 +113,22 @@ function calc_k_omega_a(oi)
         # Ignore "alpha" coefficient since this is a scaling parameter
         # Distribution valid for S(ω) & S(f) since scaled with normalisation
 
+        if oi.twist_type == "mcallister"
+            dirg_twist = dirg - mcallister_mwd.(fmatg / fm, oi.twist_angle) # MWD as a function of freq
+        elseif oi.twist_type == "modmca75"
+            dirg_twist = dirg - mcallister_mwd.(fmatg / fm, oi.twist_angle; t=0.75) # MWD as a function of freq
+        else
+            dirg_twist = dirg
+        end
+        dirg_twist = dirg_twist .+ oi.mwd
         if oi.spreading_type == "W"
-            Sdir = exp.(-0.5 * (dirg .^ 2) ./ (oi.spreading_param^2)) # A wrapped normal spreading function with parameter sigma
+            Sdir = exp.(-0.5 * (dirg_twist .^ 2) ./ (oi.spreading_param^2)) # A wrapped normal spreading function with parameter sigma
         end
         ampg_newwave = 1 ./ kmatg .* Spec .* Sdir #amplitude of component - S(kx,ky)
         replace!(ampg_newwave, NaN => 0)
     else
         println("spectrum not recognised")
     end
-
-    if oi.twist_type == "mcallister"
-        dirg = dirg + mcallister_mwd.(fmatg / fm, oi.twist_angle) # MWD as a function of freq
-    elseif oi.twist_type == "modmca75"
-        dirg = dirg + mcallister_mwd.(fmatg / fm, oi.twist_angle; t=0.75) # MWD as a function of freq
-    end
-    dirg = dirg .+ oi.mwd
 
     kstarth = sqrt(oi.kmaxx * oi.kmaxy) - 1.00 * oi.k0
     kmin = sqrt(kminx * kminy)
@@ -153,10 +150,27 @@ function calc_k_omega_a(oi)
     kxmatg, kymatg, ωmatg, ampg_newwave_norm, dirg
 end
 
+function get_phase_correction(oi, ampg_newwave_norm)
+    (nkx, nky) = size(ampg_newwave_norm)
+    phase_correction = let
+        if oi.phase_correction == nothing
+            zeros(nkx, nky)
+        else
+            if size(oi.phase_correction) == size(ampg_newwave_norm)
+                oi.phase_correction
+            else
+                error("Phase correction array must be the same size as the amplitude array\nampg_newwave_norm has size $(size(ampg_newwave_norm)) but phase_correction has size $(size(oi.phase_correction))")
+            end
+        end
+    end
+    phase_correction
+end
+
 function calc_etaphi(oi::OW3DInput, t::Number; order=1)
     kxmatg, kymatg, ωmatg, ampg_newwave_norm, dirg = calc_k_omega_a(oi)
-    η = calc_eta(oi, kxmatg, kymatg, ωmatg, t, ampg_newwave_norm)
-    ϕ = calc_phi(oi, kxmatg, kymatg, ωmatg, t, ampg_newwave_norm, η)
+    phase_correction = get_phase_correction(oi, ampg_newwave_norm)
+    η = calc_eta(oi, kxmatg, kymatg, ωmatg, t, ampg_newwave_norm, phase_correction)
+    ϕ = calc_phi(oi, kxmatg, kymatg, ωmatg, t, ampg_newwave_norm, η, phase_correction)
     if order == 1
         return η, ϕ
     elseif order == 2
@@ -167,8 +181,9 @@ end
 
 function calc_etaphi_mirror(oi::OW3DInput, t::Number; order=1)
     kxmatg, kymatg, ωmatg, ampg_newwave_norm, dirg = calc_k_omega_a(oi)
-    η = calc_eta(oi, kxmatg, kymatg, ωmatg, t, ampg_newwave_norm)
-    ϕ = calc_phi(oi, kxmatg, kymatg, ωmatg, t, ampg_newwave_norm, η)
+    phase_correction = get_phase_correction(oi, ampg_newwave_norm)
+    η = calc_eta(oi, kxmatg, kymatg, ωmatg, t, ampg_newwave_norm, phase_correction)
+    ϕ = calc_phi(oi, kxmatg, kymatg, ωmatg, t, ampg_newwave_norm, η, phase_correction)
     if order == 1
         η_mirror = (reverse(η; dims=2) .+ η) ./ 2
         ϕ_mirror = (reverse(ϕ; dims=2) .+ ϕ) ./ 2
@@ -180,25 +195,18 @@ function calc_etaphi_mirror(oi::OW3DInput, t::Number; order=1)
     end
 end
 
-function calc_etaphi(oi::OW3DInput, ts::Int, te::Int, x, y)
-    kxmatg, kymatg, ωmatg, ampg_newwave_norm, dirg = calc_k_omega_a(oi)
-    t = ts:te
-    η = calc_eta(oi, kxmatg, kymatg, ωmatg, t, ampg_newwave_norm, x, y)
-    # ϕ = calc_phi(oi, kxmatg, kymatg, ωmatg, t, ampg_newwave_norm, x, y)
-    ϕ = zeros(length(t))
-    η, ϕ
-end
+# function calc_etaphi(oi::OW3DInput, ts::Int, te::Int, x, y)
+#     kxmatg, kymatg, ωmatg, ampg_newwave_norm, dirg = calc_k_omega_a(oi)
+#     phase_correction = get_phase_correction(oi, ampg_newwave_norm)
+#     t = ts:te
+#     η = calc_eta(oi, kxmatg, kymatg, ωmatg, t, ampg_newwave_norm, x, y, phase_correction)
+#     # ϕ = calc_phi(oi, kxmatg, kymatg, ωmatg, t, ampg_newwave_norm, x, y)
+#     ϕ = zeros(length(t))
+#     η, ϕ
+# end
 
-function calc_eta(oi, kxmatg, kymatg, ωmatg, t, ampg_newwave_norm)
+function calc_eta(oi, kxmatg, kymatg, ωmatg, t, ampg_newwave_norm, phase_correction)
     (nkx, nky) = size(ampg_newwave_norm)
-    if oi.phase_correction == nothing
-        phase_correction = zeros(nkx, nky)
-    else
-        phase_correction = oi.phase_correction
-        if size(phase_correction) != size(ampg_newwave_norm)
-            error("Phase correction array must be the same size as the amplitude array")
-        end
-    end
     # Generate full-domain
     xvec = oi.dx * (-(oi.nx - 1)/2:1:(oi.nx-1)/2)
     yvec = oi.dy * (-(oi.ny - 1)/2:1:(oi.ny-1)/2)
@@ -211,22 +219,14 @@ function calc_eta(oi, kxmatg, kymatg, ωmatg, t, ampg_newwave_norm)
         local ki = 1 + (kij - 1) % nky
         local kj = 1 + (kij - 1) ÷ nky
         @local η_kj = zeros(oi.nx, oi.ny)
-        local phasei = kxmatg[ki, kj] .* xmat .+ kymatg[ki, kj] .* ymat .- ωmatg[ki, kj] * t .+ deg2rad(oi.ϕ) + phase_correction[ki, kj]
+        local phasei = kxmatg[ki, kj] .* xmat .+ kymatg[ki, kj] .* ymat .- ωmatg[ki, kj] * t .+ deg2rad(oi.ϕ) .+ phase_correction[ki, kj]
         ampg_newwave_norm[ki, kj] .* cos.(phasei)
     end
     return η
 end
 
-function calc_eta(oi, kxmatg, kymatg, ωmatg, t_vec, ampg_newwave_norm, x::Float64, y::Float64)
+function calc_eta(oi, kxmatg, kymatg, ωmatg, t_vec, ampg_newwave_norm, x::Float64, y::Float64, phase_correction)
     (nkx, nky) = size(ampg_newwave_norm)
-    if oi.phase_correction == nothing
-        phase_correction = zeros(nkx, nky)
-    else
-        phase_correction = oi.phase_correction
-        if size(phase_correction) != size(ampg_newwave_norm)
-            error("Phase correction array must be the same size as the amplitude array")
-        end
-    end
     η = zeros(length(t_vec))
     for (i, t) in enumerate(t_vec)
         for kj = eachindex(1:nky), ki = eachindex(1:nkx)
@@ -234,7 +234,7 @@ function calc_eta(oi, kxmatg, kymatg, ωmatg, t_vec, ampg_newwave_norm, x::Float
             ky = kymatg[ki, kj]
             ω = ωmatg[ki, kj]
             an = ampg_newwave_norm[ki, kj]
-            phasei = kx * x + ky * y - ω * t + deg2rad(oi.ϕ) + phase_correction[ki, kj]
+            phasei = kx * x + ky * y - ω * t + deg2rad(oi.ϕ) .+ phase_correction[ki, kj]
             etacomp = an * cos(phasei)
             η[i] += etacomp
         end
@@ -242,16 +242,8 @@ function calc_eta(oi, kxmatg, kymatg, ωmatg, t_vec, ampg_newwave_norm, x::Float
     η
 end
 
-function calc_phi(oi, kxmatg, kymatg, ωmatg, t, ampg_newwave_norm, η)
+function calc_phi(oi, kxmatg, kymatg, ωmatg, t, ampg_newwave_norm, η, phase_correction)
     (nkx, nky) = size(ampg_newwave_norm)
-    if oi.phase_correction == nothing
-        phase_correction = zeros(nkx, nky)
-    else
-        phase_correction = oi.phase_correction
-        if size(phase_correction) != size(ampg_newwave_norm)
-            error("Phase correction array must be the same size as the amplitude array")
-        end
-    end
     # Generate full-domain
     xvec = oi.dx * (-(oi.nx - 1)/2:1:(oi.nx-1)/2)
     yvec = oi.dy * (-(oi.ny - 1)/2:1:(oi.ny-1)/2)
@@ -264,7 +256,7 @@ function calc_phi(oi, kxmatg, kymatg, ωmatg, t, ampg_newwave_norm, η)
         local ki = 1 + (kij - 1) % nky
         local kj = 1 + (kij - 1) ÷ nky
         @local ϕ_kj = zeros(oi.nx, oi.ny)
-        local phasei = kxmatg[ki, kj] .* xmat .+ kymatg[ki, kj] .* ymat .- ωmatg[ki, kj] * t .+ deg2rad(oi.ϕ) + phase_correction[ki, kj]
+        local phasei = kxmatg[ki, kj] .* xmat .+ kymatg[ki, kj] .* ymat .- ωmatg[ki, kj] * t .+ deg2rad(oi.ϕ) .+ phase_correction[ki, kj]
         (ampg_newwave_norm[ki, kj] ./ (ωmatg[ki, kj] .+ 0.000000001)) .* g .* ((cosh.(kmatg[ki, kj] .* (η .+ oi.depth)) ./ cosh.(kmatg[ki, kj] .* oi.depth)) .* sin.(phasei))
     end
     ϕ
