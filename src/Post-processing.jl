@@ -289,3 +289,15 @@ function calc_zs(eta, nz, depth)
     end
     zs
 end
+
+function calc_phase_correction(nx, ny, dx, dy, kmaxx, kmaxy, eta1, t)
+    c = fft(fftshift(eta1[t, :, :]))
+    cs = fftshift(c) * 2 / (nx * ny)
+    x = fftshift(fftfreq(nx, 1 / dx)) * 2 * pi
+    y = fftshift(fftfreq(ny, 1 / dy)) * 2 * pi
+    cs_trunc = cs[abs.(x).<=kmaxx, abs.(y).<=kmaxy]
+    rad = rem2pi.(angle.(cs_trunc), RoundNearest)
+    nkx, nky = size(cs_trunc)
+    target = zeros(nkx, nky)
+    return target .- rad
+end
